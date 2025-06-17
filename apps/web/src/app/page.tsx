@@ -1,14 +1,12 @@
 import React from "react";
-import { prisma } from "@repo/prisma";
 import { Button } from "@repo/ui/button";
 import { ModeToggle } from "@/components/dark-mode-toggle";
+import { prisma } from "@repo/prisma";
 
-export default function page() {
+export default async function page() {
   return (
     <div>
-      {prisma}
       <Button>Click me</Button>
-
       <ModeToggle />
     </div>
   );

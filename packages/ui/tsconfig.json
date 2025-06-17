@@ -1,6 +1,6 @@
 {
   "extends": "@repo/typescript-config/react-library.json",
-  "include": [".", "src/components/ui/dropdown-menu.tsx"],
+  "include": ["."],
   "exclude": ["dist", "build", "node_modules"],
   "compilerOptions": {
     "paths": {
