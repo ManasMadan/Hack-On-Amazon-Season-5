@@ -2,18 +2,20 @@
   "name": "backend",
   "private": true,
   "type": "module",
-  "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "tsup src/server.ts",
-    "start": "node dist/server.js",
-    "check-types": "tsc --noEmit"
-  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "types": "./dist/index.d.ts"
     }
+  },
+  "scripts": {
+    "dev:run": "tsx watch src/index.ts",
+    "build": "tsup src/index.ts --dts",
+    "start": "node dist/index.js",
+    "check-types": "tsc --noEmit",
+    "dev:types": "tsc --emitDeclarationOnly --watch"
   },
   "alias": {
     "scheduler/tracing": "../../node_modules/scheduler/tracing-profiling"
