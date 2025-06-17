@@ -1,0 +1,13 @@
+{
+  "name": "@repo/tailwind-config",
+  "type": "module",
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.1.10",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.10"
+  },
+  "exports": {
+    ".": "./tailwind.css",
+    "./postcss": "./postcss.config.js"
+  }
+}
