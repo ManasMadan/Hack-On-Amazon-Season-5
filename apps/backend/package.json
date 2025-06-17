@@ -3,13 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/router.ts",
-    "build": "esbuild src/router.ts --bundle --platform=node --format=esm --packages=external --outdir=dist --sourcemap",
+    "dev": "tsup --watch",
+    "build": "tsup",
     "start": "bun dev",
     "check-types": "tsc --noEmit"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   },
   "alias": {
     "scheduler/tracing": "../../node_modules/scheduler/tracing-profiling"
@@ -20,16 +24,16 @@
     "@types/express": "^5.0.0",
     "@types/node": "^22.13.5",
     "@types/react": "^19.1.0",
-    "esbuild": "^0.17.10",
+    "tsup": "^8.5.0",
     "tsx": "^4.19.3",
-    "typescript": "latest",
-    "wait-port": "^1.0.1"
+    "typescript": "latest"
   },
   "dependencies": {
     "@trpc/server": "^11.4.1",
     "better-auth": "^1.2.9",
     "cors": "^2.8.5",
     "express": "^5.0.0",
-    "zod": "^3.25.51"
+    "zod": "^3.25.51",
+    "@repo/auth": "*"
   }
 }

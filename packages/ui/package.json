@@ -6,29 +6,25 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     },
-    "./styles.css": "./dist/styles.css",
-    "./button": {
-      "import": "./dist/components/ui/button.js",
-      "require": "./dist/components/ui/button.js",
-      "types": "./dist/components/ui/button.d.ts"
+    "./*": {
+      "types": "./dist/components/ui/*.d.ts",
+      "import": "./dist/components/ui/*.js",
+      "require": "./dist/components/ui/*.js"
     },
-    "./dropdown-menu": {
-      "import": "./dist/components/ui/dropdown-menu.js",
-      "require": "./dist/components/ui/dropdown-menu.js",
-      "types": "./dist/components/ui/dropdown-menu.d.ts"
-    }
+    "./styles.css": "./src/styles.css"
   },
   "scripts": {
-    "dev": "tsc --watch",
-    "build": "tsc && cp src/styles.css dist/styles.css"
+    "dev": "tsup --watch",
+    "build": "tsup"
   },
   "devDependencies": {
     "@repo/typescript-config": "*",
     "tailwindcss": "^4.1.10",
+    "tsup": "^8.5.0",
     "typescript": "^5.4.0"
   },
   "dependencies": {
