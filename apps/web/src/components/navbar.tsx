@@ -4,6 +4,45 @@ import { Drawer, DrawerContent, DrawerTrigger } from "@repo/ui/drawer";
 import { Menu } from "lucide-react";
 import DarkModeToggle from "./dark-mode-toggle";
 import Link from "next/link";
+import { authClient } from "@repo/auth/client";
+import { Skeleton } from "@repo/ui/skeleton";
+import { usePathname } from "next/navigation";
+import { cn } from "@repo/ui";
+
+const TryNowButton = () => {
+  const { data, isPending, error } = authClient.useSession();
+  const pathname = usePathname();
+
+  const isHiddenRoute =
+    pathname.startsWith("/dashboard") || pathname.startsWith("/auth");
+
+  let label = "Get Started";
+
+  if (data?.user) {
+    label = "Dashboard";
+  }
+
+  if (isHiddenRoute || error) {
+    return <div className="hidden" />;
+  }
+
+  return (
+    <div>
+      {isPending ? (
+        <Skeleton className="h-12 w-24 lg:w-32 rounded-xl lg:rounded-2xl" />
+      ) : (
+        <Link
+          href="/auth"
+          className={cn(
+            "font-lemon-mocktail bg-primary text-white px-3 lg:px-4 py-2 rounded-xl lg:rounded-2xl h-12 flex items-center justify-center cursor-pointer hover:bg-primary-600"
+          )}
+        >
+          {label}
+        </Link>
+      )}
+    </div>
+  );
+};
 
 export default function Navbar() {
   return (
@@ -15,12 +54,7 @@ export default function Navbar() {
         <div>Features</div>
         <div>Team</div>
         <DarkModeToggle />
-        <Link
-          href="/auth"
-          className="font-lemon-mocktail bg-primary text-white px-3 lg:px-4 py-2 rounded-xl lg:rounded-2xl h-12 flex items-center justify-center cursor-pointer hover:bg-primary-600"
-        >
-          Try Now
-        </Link>
+        <TryNowButton />
       </nav>
 
       <Drawer>
@@ -35,12 +69,7 @@ export default function Navbar() {
             <div>How it Works?</div>
             <div>Features</div>
             <div>Team</div>
-            <Link
-              href="/auth"
-              className="font-lemon-mocktail bg-primary text-white px-4 py-2 rounded-xl flex items-center cursor-pointer hover:bg-primary-600"
-            >
-              Try Now
-            </Link>
+            <TryNowButton />
           </div>
         </DrawerContent>
       </Drawer>

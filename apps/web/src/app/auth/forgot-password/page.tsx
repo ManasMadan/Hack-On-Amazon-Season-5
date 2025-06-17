@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -22,31 +21,27 @@ import {
   CardTitle,
 } from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
-import { PasswordInput } from "@repo/ui/password-input";
-import { clientGoogleSignIn } from "@repo/auth/client";
+import Link from "next/link";
 
+// Schema for email validation
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
-  password: z
-    .string()
-    .min(6, { message: "Password must be at least 6 characters long" })
-    .regex(/[a-zA-Z0-9]/, { message: "Password must be alphanumeric" }),
 });
 
-export default function LoginPreview() {
+export default function ForgetPasswordPreview() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
-      password: "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
+      // Assuming a function to send reset email
       console.log(values);
     } catch (error) {
-      console.error("Form submission error", error);
+      console.error("Error sending password reset email", error);
     }
   }
 
@@ -54,15 +49,16 @@ export default function LoginPreview() {
     <div className="flex mt-12 w-full items-center justify-center px-4">
       <Card className="mx-auto max-w-md w-full">
         <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
+          <CardTitle className="text-2xl">Forgot Password</CardTitle>
           <CardDescription>
-            Enter your email and password to login to your account.
+            Enter your email address to receive a password reset link.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <div className="grid gap-4">
+                {/* Email Field */}
                 <FormField
                   control={form.control}
                   name="email"
@@ -82,52 +78,16 @@ export default function LoginPreview() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem className="grid gap-2">
-                      <div className="flex justify-between items-center">
-                        <FormLabel htmlFor="password">Password</FormLabel>
-                        <Link
-                          href="#"
-                          className="ml-auto inline-block text-sm underline"
-                        >
-                          Forgot your password?
-                        </Link>
-                      </div>
-                      <FormControl>
-                        <PasswordInput
-                          id="password"
-                          placeholder="******"
-                          autoComplete="current-password"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <Button type="submit" className="w-full">
-                  Login
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    await clientGoogleSignIn();
-                  }}
-                >
-                  Login with Google
+                  Send Reset Link
                 </Button>
               </div>
             </form>
           </Form>
           <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Link href="#" className="underline">
-              Sign up
+            Remember It?{" "}
+            <Link href="/auth/sign-in" className="underline">
+              Sign In
             </Link>
           </div>
         </CardContent>
