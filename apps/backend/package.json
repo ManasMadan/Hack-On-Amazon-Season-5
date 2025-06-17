@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/router.ts",
-    "build": "esbuild src/server.ts src/client.ts --bundle --packages=external --platform=node --format=esm --outdir=dist --sourcemap",
+    "build": "esbuild src/router.ts --bundle --platform=node --format=esm --packages=external --outdir=dist --sourcemap",
     "start": "bun dev",
     "check-types": "tsc --noEmit"
   },

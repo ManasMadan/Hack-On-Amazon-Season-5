@@ -1,6 +1,11 @@
 "use client";
+import Navbar from "@/components/navbar";
 import React from "react";
 
 export default function page() {
-  return <div className="font-lemon-mocktail">Manas</div>;
+  return (
+    <div>
+      <Navbar />
+    </div>
+  );
 }

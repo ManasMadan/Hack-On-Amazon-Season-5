@@ -1,25 +1,33 @@
 {
   "name": "@repo/database",
   "type": "module",
+  "main": "./dist/client.js",
+  "module": "./dist/client.js",
+  "types": "./dist/client.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/client.js",
+      "require": "./dist/client.js",
+      "types": "./dist/client.d.ts"
+    }
+  },
   "scripts": {
     "db:push": "prisma db push",
-    "db:seed": "tsx src/seed.ts",
+    "db:seed": "tsx dist/seed.js",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "db:studio": "prisma studio --browser none",
     "db:generate": "prisma generate",
-    "dev": "tsc --watch",
     "format": "prisma format",
     "lint": "eslint . --max-warnings 0",
-    "prebuild": "npm run generate",
-    "predev": "npm run generate"
-  },
-  "exports": {
-    ".": "./src/client.ts"
+    "prebuild": "npm run db:generate",
+    "predev": "npm run db:generate",
+    "dev": "tsc --watch",
+    "build": "tsc"
   },
   "devDependencies": {
     "@repo/typescript-config": "*",
-    "typescript": "latest",
+    "typescript": "^5.4.0",
     "prisma": "^6.9.0"
   },
   "dependencies": {

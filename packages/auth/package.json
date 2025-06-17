@@ -1,17 +1,28 @@
 {
   "name": "@repo/auth",
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./client": {
+      "import": "./dist/client.js",
+      "require": "./dist/client.js",
+      "types": "./dist/client.d.ts"
+    }
+  },
   "scripts": {
     "dev": "tsc --watch",
     "build": "tsc"
   },
-  "exports": {
-    ".": "./src/index.ts",
-    "./client": "./src/client.ts"
-  },
   "devDependencies": {
-    "@repo/typescript-config": "workspace:*",
-    "typescript": "latest"
+    "@repo/typescript-config": "*",
+    "typescript": "^5.4.0"
   },
   "dependencies": {
     "better-auth": "^1.2.9",
