@@ -2,5 +2,5 @@
 import React from "react";
 
 export default function page() {
-  return <div></div>;
+  return <div className="font-lemon-mocktail">Manas</div>;
 }

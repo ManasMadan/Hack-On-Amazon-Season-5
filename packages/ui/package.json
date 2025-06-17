@@ -2,10 +2,8 @@
   "name": "@repo/ui",
   "type": "module",
   "scripts": {
-    "dev:styles": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
-    "dev:components": "tsup --watch",
-    "build:styles": "tailwindcss -i ./src/styles.css -o ./dist/index.css",
-    "build:components": "tsup"
+    "dev": "tsup --watch",
+    "build": "tsup"
   },
   "exports": {
     ".": {
@@ -18,14 +16,13 @@
       "import": "./dist/components/ui/*.cjs",
       "require": "./dist/components/ui/*.js"
     },
-    "./styles.css": "./dist/index.css"
+    "./styles.css": "./src/styles.css"
   },
   "devDependencies": {
     "@repo/typescript-config": "*",
     "typescript": "latest",
     "tsup": "^8.5.0",
-    "tailwindcss": "^4.1.10",
-    "@tailwindcss/cli": "^4.1.10"
+    "tailwindcss": "^4.1.10"
   },
   "dependencies": {
     "@radix-ui/react-dropdown-menu": "^2.1.15",
