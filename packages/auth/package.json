@@ -14,6 +14,11 @@
       "import": "./dist/client.js",
       "require": "./dist/client.js",
       "types": "./dist/client.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server.js",
+      "require": "./dist/server.js",
+      "types": "./dist/server.d.ts"
     }
   },
   "scripts": {
@@ -25,7 +30,8 @@
     "typescript": "^5.4.0"
   },
   "dependencies": {
+    "@repo/database": "*",
     "better-auth": "^1.2.9",
-    "@repo/database": "*"
+    "next": "^15.3.0"
   }
 }

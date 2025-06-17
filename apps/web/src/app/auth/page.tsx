@@ -1,16 +1,15 @@
-import React from "react";
-import { authClient } from "@repo/auth/client";
 import { redirect } from "next/navigation";
+import { serverSession } from "@repo/auth/server";
 
 export default async function index() {
-  const result = await authClient.getSession();
+  const result = await serverSession();
 
-  if (!result.data) {
+  if (!result) {
     return redirect("/auth/login");
   }
-  if (!result.data.session || !result.data.user) {
+  if (!result.session || !result.user) {
     return redirect("/auth/login");
   }
 
-  return redirect("/auth/dashboard");
+  return redirect("/dashboard");
 }

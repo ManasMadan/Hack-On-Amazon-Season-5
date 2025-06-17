@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsup --watch",
-    "build": "tsup",
-    "start": "bun dev",
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup src/server.ts",
+    "start": "node dist/server.js",
     "check-types": "tsc --noEmit"
   },
   "exports": {
