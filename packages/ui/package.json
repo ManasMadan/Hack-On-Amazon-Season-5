@@ -18,7 +18,8 @@
       "import": "./dist/components/ui/*.js",
       "require": "./dist/components/ui/*.js"
     },
-    "./styles.css": "./dist/index.css"
+    "./output.css": "./dist/index.css",
+    "./styles.css": "./src/styles.css"
   },
   "scripts": {
     "dev": "tsup --watch",

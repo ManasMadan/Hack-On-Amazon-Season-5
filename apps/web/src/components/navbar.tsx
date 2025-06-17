@@ -1,4 +1,5 @@
 import React from "react";
+import DarkModeToggle from "./dark-mode-toggle";
 
 export default function Navbar() {
   return (
@@ -8,8 +9,8 @@ export default function Navbar() {
         <div>How it Works ?</div>
         <div>Features</div>
         <div>Team</div>
+        <DarkModeToggle />
         <div className="bg-primary px-4 py-2 rounded-2xl">Try Now</div>
-        <div></div>
       </nav>
     </div>
   );
