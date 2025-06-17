@@ -10,6 +10,14 @@
   font-style: normal;
 }
 
+@font-face {
+  font-family: "Star Avenue";
+  src: url("/fonts/staravenue.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
 @theme {
   --font-lemon-mocktail: "Lemon Mocktail", sans-serif;
+  --font-star-avenue: "Star Avenue", sans-serif;
 }
