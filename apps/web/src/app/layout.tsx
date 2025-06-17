@@ -1,6 +1,8 @@
 import "./globals.css";
 import ThemeProvider from "@/components/theme-provider";
 import { CustomTRPCProvider } from "@/utils/trpc-provider";
+import { ReactLenis } from "lenis/react";
+import Cursor from "@/components/cursor";
 
 export default function RootLayout({
   children,
@@ -16,7 +18,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <CustomTRPCProvider>{children}</CustomTRPCProvider>
+          <CustomTRPCProvider>
+            <ReactLenis root />
+            <Cursor />
+
+            {children}
+          </CustomTRPCProvider>
         </ThemeProvider>
       </body>
     </html>
