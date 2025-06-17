@@ -2,23 +2,30 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import express from "express";
 import { appRouter } from ".";
 import cors from "cors";
+import { toNodeHandler } from "better-auth/node";
+import { auth } from "@repo/auth";
 
-async function main() {
-  const app = express();
+const app = express();
 
-  app.use(cors());
+app.use(
+  cors({
+    origin: process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 
-  app.get("/", (_req, res) => {
-    res.send("Server is running!");
-  });
+app.get("/", (_req, res) => {
+  res.send("Server is running!");
+});
 
-  app.use(
-    "/trpc",
-    createExpressMiddleware({
-      router: appRouter,
-    })
-  );
-  app.listen(3001);
-}
+app.all("/api/auth/*splat", toNodeHandler(auth));
 
-void main();
+app.use(
+  "/trpc",
+  createExpressMiddleware({
+    router: appRouter,
+  })
+);
+
+app.listen(3001);

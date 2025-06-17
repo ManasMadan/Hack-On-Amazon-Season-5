@@ -9,6 +9,8 @@ import { useQuery } from "@tanstack/react-query";
 export default function page() {
   const signIn = authClient.signIn.social;
   const trpc = useTRPC();
+  const { useSession } = authClient;
+  const { data: session } = useSession();
 
   const { data, isLoading } = useQuery(
     trpc.hello.greeting.queryOptions({ name: "Manas Madan" })
@@ -22,6 +24,7 @@ export default function page() {
             console.log("Signing in with Google");
             await signIn({
               provider: "google",
+              callbackURL: `${process.env.NEXT_PUBLIC_FRONTEND_URL}`,
             });
             console.log("Signed in with Google");
           } catch (error) {
@@ -33,6 +36,7 @@ export default function page() {
       </Button>
       <ModeToggle />
       <p>{isLoading ? "Loading" : data}</p>
+      <p>{isLoading ? "Loading" : session?.user.email}</p>
     </div>
   );
 }
