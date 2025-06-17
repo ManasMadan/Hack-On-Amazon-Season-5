@@ -36,6 +36,17 @@ export function CustomTRPCProvider({
           url:
             `${process.env.NEXT_PUBLIC_BACKEND_URL}/trpc` ||
             "http://localhost:3001/trpc",
+          headers: () => {
+            return {
+              Cookie: document.cookie,
+            };
+          },
+          fetch(url, options) {
+            return fetch(url, {
+              ...options,
+              credentials: "include",
+            });
+          },
         }),
       ],
     });

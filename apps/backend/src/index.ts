@@ -13,6 +13,7 @@ app.use(
     origin: process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3000",
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -26,7 +27,7 @@ app.use(
   "/trpc",
   createExpressMiddleware({
     router: appRouter,
-    createContext,
+    createContext: createContext,
   })
 );
 

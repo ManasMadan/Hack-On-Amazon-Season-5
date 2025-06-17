@@ -11,7 +11,7 @@ export default function dashboard() {
 
   return (
     <div>
-      <p>{userQuery.data?.messages}</p>
+      <p>{userQuery.data?.message}</p>
 
       <Button onClick={serverSignOut}>Logout</Button>
     </div>
