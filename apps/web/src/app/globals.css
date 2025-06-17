@@ -1,7 +1,7 @@
-@import "tailwindcss";
+@import "@repo/ui/output.css";
 @import "@repo/tailwind-config";
 @import "@repo/ui/styles.css";
-@import "@repo/ui/output.css";
+@import "tailwindcss";
 
 @font-face {
   font-family: "Lemon Mocktail";

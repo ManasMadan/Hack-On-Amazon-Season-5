@@ -1,19 +1,40 @@
+"use client";
 import React from "react";
+import { Drawer, DrawerContent, DrawerTrigger } from "@repo/ui/drawer";
+import { Menu } from "lucide-react";
 import DarkModeToggle from "./dark-mode-toggle";
 
 export default function Navbar() {
   return (
-    <div className="font-lemon-mocktail px-16 py-8 flex justify-between">
-      <div className="text-6xl">SecureVoice+</div>
-      <nav className="flex gap-8 text-2xl items-center">
-        <div>How it Works ?</div>
+    <div className="font-lemon-mocktail px-4 sm:px-8 py-4 sm:py-8 flex justify-between items-center">
+      <div className="text-4xl lg:text-5xl">SecureVoice+</div>
+
+      <nav className="hidden md:flex gap-4 lg:gap-8 text-lg lg:text-2xl items-center">
+        <div>How it Works?</div>
         <div>Features</div>
         <div>Team</div>
         <DarkModeToggle />
-        <div className="bg-primary text-white px-4 py-2 rounded-2xl h-12 flex items-center">
+        <div className="bg-primary text-white px-3 lg:px-4 py-2 rounded-xl lg:rounded-2xl h-12 flex items-center justify-center cursor-pointer hover:bg-primary-600">
           Try Now
         </div>
       </nav>
+
+      <Drawer>
+        <DrawerTrigger className="flex gap-4 items-center md:hidden">
+          <DarkModeToggle />
+          <Menu className="h-6 w-6" />
+        </DrawerTrigger>
+        <DrawerContent>
+          <div className="flex flex-col items-center gap-4 p-6 text-lg">
+            <div>How it Works?</div>
+            <div>Features</div>
+            <div>Team</div>
+            <div className="bg-primary text-white px-4 py-2 rounded-xl flex items-center cursor-pointer hover:bg-primary-600">
+              Try Now
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

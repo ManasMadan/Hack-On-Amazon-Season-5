@@ -21,7 +21,6 @@ export default function RootLayout({
           <CustomTRPCProvider>
             <ReactLenis root />
             <Cursor />
-
             {children}
           </CustomTRPCProvider>
         </ThemeProvider>
