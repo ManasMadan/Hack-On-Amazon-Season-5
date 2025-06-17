@@ -10,7 +10,9 @@ export default function Navbar() {
         <div>Features</div>
         <div>Team</div>
         <DarkModeToggle />
-        <div className="bg-primary px-4 py-2 rounded-2xl">Try Now</div>
+        <div className="bg-primary text-white px-4 py-2 rounded-2xl h-12 flex items-center">
+          Try Now
+        </div>
       </nav>
     </div>
   );

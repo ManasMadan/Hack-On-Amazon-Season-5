@@ -18,9 +18,9 @@ export default function DarkModeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon">
-          <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-          <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
+        <Button className="rounded-2xl h-12 w-12 p-0" variant="default">
+          <Sun className="h-5 w-5 scale-150 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
+          <Moon className="absolute h-5 w-5 scale-0 rotate-90 transition-all dark:scale-150 dark:rotate-0" />
           <span className="sr-only">Toggle theme</span>
         </Button>
       </DropdownMenuTrigger>
