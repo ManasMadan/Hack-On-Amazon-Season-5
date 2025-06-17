@@ -12,11 +12,22 @@
     },
     "dev": {
       "cache": false,
-      "persistent": true
+      "persistent": true,
+      "dependsOn": ["db:studio"]
     },
     "start": {
       "dependsOn": ["build"],
       "persistent": true,
+      "cache": false
+    },
+    "db:push": {
+      "cache": false
+    },
+    "db:seed": {
+      "cache": false
+    },
+    "db:generate": {
+      "dependsOn": ["^db:generate"],
       "cache": false
     },
     "db:migrate:dev": {
@@ -26,14 +37,7 @@
     "db:migrate:deploy": {
       "cache": false
     },
-    "db:push": {
-      "cache": false
-    },
-    "db:seed": {
-      "cache": false
-    },
-    "generate": {
-      "dependsOn": ["^generate"],
+    "db:studio": {
       "cache": false
     }
   }

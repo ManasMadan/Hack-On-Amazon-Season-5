@@ -10,8 +10,10 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@repo/prisma": "*",
+    "@repo/database": "*",
+    "@repo/auth": "*",
     "@repo/ui": "*",
+    "better-auth": "^1.2.9",
     "next": "^15.3.0",
     "next-themes": "^0.4.6",
     "react": "^19.1.0",
