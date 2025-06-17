@@ -1,10 +1,11 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig((options) => ({
-  entryPoints: [
+  entry: [
     "src/index.ts",
-    "src/components/ui/**/*.ts",
-    "src/components/ui/**/*.tsx",
+    "src/components/ui/button.tsx",
+    "src/components/ui/card.tsx",
+    "src/components/ui/dropdown-menu.tsx",
   ],
   format: ["esm"],
   dts: true,
