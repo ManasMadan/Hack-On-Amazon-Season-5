@@ -13,7 +13,7 @@ app.use(
     origin: process.env.NEXT_PUBLIC_FRONTEND_URL!,
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
   })
 );
 
