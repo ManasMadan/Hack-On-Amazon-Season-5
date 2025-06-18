@@ -25,6 +25,7 @@ import {
 import { Input } from "@repo/ui/input";
 import { PasswordInput } from "@repo/ui/password-input";
 import { PhoneInput } from "@repo/ui/phone-input";
+import { authClient } from "@repo/auth/client";
 
 // Define validation schema using Zod
 const formSchema = z
@@ -34,7 +35,12 @@ const formSchema = z
       .min(2, { message: "Name must be at least 2 characters long" }),
     email: z.string().email({ message: "Invalid email address" }),
     phone: z.string().min(10, { message: "Phone number must be valid" }),
-    image: z.string().nonempty({ message: "Image Key is required" }),
+    image: z
+      .any()
+      .refine((file) => file instanceof File, {
+        message: "Image file is required",
+      })
+      .optional(),
     password: z
       .string()
       .min(6, { message: "Password must be at least 6 characters long" })
@@ -46,7 +52,7 @@ const formSchema = z
     message: "Passwords do not match",
   });
 
-export default function RegisterPreview() {
+export default function Register() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -55,22 +61,30 @@ export default function RegisterPreview() {
       phone: "",
       password: "",
       confirmPassword: "",
+      image: undefined,
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      // Assuming an async registration function
-      console.log(values);
-      toast(
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(values, null, 2)}</code>
-        </pre>
-      );
-    } catch (error) {
-      console.error("Form submission error", error);
-      toast.error("Failed to submit the form. Please try again.");
-    }
+    toast.promise(
+      async () => {
+        const result = await authClient.signUp.email({
+          email: values.email,
+          password: values.password,
+          name: values.name,
+          phoneNumber: values.phone,
+          // todo
+          image: "manas",
+          profileComplete: true,
+        });
+        if (result.error) throw new Error(result.error.message);
+      },
+      {
+        loading: "Creating account...",
+        success: "Account created successfully!",
+        error: (e) => e.message || "Failed to create account",
+      }
+    );
   }
 
   return (
@@ -130,14 +144,34 @@ export default function RegisterPreview() {
                     <FormItem className="grid gap-2">
                       <FormLabel htmlFor="phone">Phone Number</FormLabel>
                       <FormControl>
-                        <PhoneInput {...field} defaultCountry="TR" />
-                        {/* <Input
-                          id="phone"
-                          placeholder="555-123-4567"
-                          type="tel"
-                          autoComplete="tel"
-                          {...field}
-                        /> */}
+                        <PhoneInput {...field} defaultCountry="IN" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="image"
+                  render={({ field }) => (
+                    <FormItem className="grid gap-2">
+                      <FormLabel htmlFor="image">Profile Image</FormLabel>
+                      <FormControl>
+                        <Input
+                          id="image"
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            console.log(file);
+                            if (file) {
+                              form.setValue("image", file, {
+                                shouldValidate: true,
+                              });
+                            }
+                          }}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

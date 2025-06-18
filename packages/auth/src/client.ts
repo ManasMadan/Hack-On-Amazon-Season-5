@@ -1,18 +1,14 @@
+import {
+  customSessionClient,
+  inferAdditionalFields,
+} from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
+import { auth } from ".";
 
 export const authClient = createAuthClient({
   baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL!,
+  plugins: [
+    customSessionClient<typeof auth>(),
+    inferAdditionalFields<typeof auth>(),
+  ],
 });
-
-const { signIn } = authClient;
-
-export const clientGoogleSignIn = async () => {
-  try {
-    await signIn.social({
-      provider: "google",
-      callbackURL: `${process.env.NEXT_PUBLIC_FRONTEND_URL}/auth`,
-    });
-  } catch (error) {
-    console.error("Google Sign-In Error:", error);
-  }
-};

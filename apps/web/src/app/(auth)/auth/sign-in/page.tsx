@@ -23,7 +23,8 @@ import {
 } from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
 import { PasswordInput } from "@repo/ui/password-input";
-import { clientGoogleSignIn } from "@repo/auth/client";
+import { authClient } from "@repo/auth/client";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -43,11 +44,24 @@ export default function SignInPage() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    try {
-      console.log(values);
-    } catch (error) {
-      console.error("Form submission error", error);
-    }
+    toast.promise(
+      async () => {
+        const res = await authClient.signIn.email({
+          email: values.email,
+          password: values.password,
+          callbackURL: `${process.env.NEXT_PUBLIC_FRONTEND_URL}/auth`,
+        });
+        if (res.error) {
+          throw new Error(res.error.message || "Failed to sign in");
+        }
+      },
+      {
+        loading: "Signing in...",
+        success: "Signed in successfully!",
+        error: (e: Error) =>
+          e.message || "Failed to sign in. Please try again.",
+      }
+    );
   }
 
   return (
@@ -116,7 +130,10 @@ export default function SignInPage() {
                   className="w-full"
                   onClick={async (e) => {
                     e.preventDefault();
-                    await clientGoogleSignIn();
+                    authClient.signIn.social({
+                      provider: "google",
+                      callbackURL: `${process.env.NEXT_PUBLIC_FRONTEND_URL}/auth`,
+                    });
                   }}
                 >
                   Sign In with Google

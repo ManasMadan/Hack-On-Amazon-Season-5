@@ -7,7 +7,8 @@
     "paths": {
       "@/routes/*": ["./src/routes/*"],
       "@/trpc/*": ["./src/trpc/*"],
-      "@/trpc": ["./src/trpc/trpc"]
+      "@/trpc": ["./src/trpc/trpc"],
+      "@/utils/*": ["./src/utils/*"]
     },
     "outDir": "dist",
     "rootDir": "src"

@@ -1,3 +1,4 @@
+"use client";
 import "./globals.css";
 import ThemeProvider from "@/components/theme-provider";
 import { CustomTRPCProvider } from "@/utils/trpc-provider";
@@ -5,6 +6,7 @@ import { ReactLenis } from "lenis/react";
 import Cursor from "@/components/cursor";
 import { Space_Mono } from "next/font/google";
 import Navbar from "@/components/navbar";
+import { Toaster } from "@repo/ui/sonner";
 
 const space_monos = Space_Mono({ weight: ["400", "700"], subsets: ["latin"] });
 
@@ -26,6 +28,8 @@ export default function RootLayout({
             <ReactLenis root />
             <Cursor />
             <Navbar />
+            <Toaster />
+
             {children}
           </CustomTRPCProvider>
         </ThemeProvider>

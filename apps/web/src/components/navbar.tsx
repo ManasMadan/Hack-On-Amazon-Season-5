@@ -4,13 +4,13 @@ import { Drawer, DrawerContent, DrawerTrigger } from "@repo/ui/drawer";
 import { Menu } from "lucide-react";
 import DarkModeToggle from "./dark-mode-toggle";
 import Link from "next/link";
-import { authClient } from "@repo/auth/client";
 import { Skeleton } from "@repo/ui/skeleton";
 import { usePathname } from "next/navigation";
 import { cn } from "@repo/ui";
+import { useCustomSession } from "@/hooks/useCustomSession";
 
 const TryNowButton = () => {
-  const { data, isPending, error } = authClient.useSession();
+  const { data, isPending, error } = useCustomSession();
   const pathname = usePathname();
 
   const isHiddenRoute =
