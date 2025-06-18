@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@repo/typescript-config": "*",
+    "@tailwindcss/cli": "^4.1.10",
     "tailwindcss": "^4.1.10",
     "tsup": "^8.5.0",
     "typescript": "^5.4.0"
