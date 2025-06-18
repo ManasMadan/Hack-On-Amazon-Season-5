@@ -33,9 +33,7 @@ export function CustomTRPCProvider({
     return createTRPCClient<AppRouter>({
       links: [
         httpBatchLink({
-          url:
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/trpc` ||
-            "http://localhost:3001/trpc",
+          url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/trpc`,
           headers: () => {
             return {
               Cookie: document.cookie,
