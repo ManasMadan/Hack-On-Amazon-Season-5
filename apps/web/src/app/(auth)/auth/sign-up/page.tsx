@@ -26,6 +26,8 @@ import { Input } from "@repo/ui/input";
 import { PasswordInput } from "@repo/ui/password-input";
 import { PhoneInput } from "@repo/ui/phone-input";
 import { authClient } from "@repo/auth/client";
+import { useTRPC } from "@/utils/trpc";
+import { useMutation } from "@tanstack/react-query";
 
 // Define validation schema using Zod
 const formSchema = z
@@ -64,17 +66,29 @@ export default function Register() {
       image: undefined,
     },
   });
+  const trpc = useTRPC();
+  const { mutateAsync: uploadImage } = useMutation(
+    trpc.avatar.uploadImage.mutationOptions()
+  );
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     toast.promise(
       async () => {
+        if (!values.image) {
+          toast.error("Please upload a profile image.");
+          return;
+        }
+        const arrayBuffer = await values.image.arrayBuffer();
+        const uploadResult = await uploadImage({
+          arrayBuffer: arrayBuffer,
+          filename: values.image.name,
+        });
         const result = await authClient.signUp.email({
           email: values.email,
           password: values.password,
           name: values.name,
           phoneNumber: values.phone,
-          // todo
-          image: "manas",
+          image: uploadResult.fileKey,
           profileComplete: true,
         });
         if (result.error) throw new Error(result.error.message);
@@ -164,7 +178,6 @@ export default function Register() {
                           accept="image/*"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
-                            console.log(file);
                             if (file) {
                               form.setValue("image", file, {
                                 shouldValidate: true,
