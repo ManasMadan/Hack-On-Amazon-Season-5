@@ -28,7 +28,6 @@ function createSymlink(linkPath) {
     if (existsSync(linkPath)) {
       const stat = lstatSync(linkPath);
       if (stat.isSymbolicLink()) {
-        console.log(`[✔] Symlink already exists at ${linkPath}`);
         return;
       } else {
         console.warn(
