@@ -10,7 +10,7 @@ const sendVerificationCode = async (
   if (prefix === "reset") {
     const uid = v4();
     console.log(
-      "RESET LINK: ",
+      `RESET LINK for ${identifier}`,
       `${process.env.NEXT_PUBLIC_FRONTEND_URL}/auth/reset-password?code=${uid}`
     );
     await prisma.verification.create({
@@ -22,6 +22,7 @@ const sendVerificationCode = async (
     });
   } else {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log(`VERIFICATION CODE for ${identifier}`, code);
     await prisma.verification.create({
       data: {
         identifier: `${prefix}-${identifier}`,
