@@ -43,12 +43,12 @@ export const avatarRouter = router({
   uploadImage: publicProcedure
     .input(
       z.object({
-        arrayBuffer: z.any(),
+        fileBase64: z.string(),
         filename: z.string(),
       })
     )
     .mutation(async ({ input }) => {
-      const { arrayBuffer, filename } = input;
+      const { fileBase64, filename } = input;
       const extension = filename ? filename.split(".").pop() : "file";
 
       const uniqueFilename = `${v4()}.${extension}`;
@@ -56,10 +56,7 @@ export const avatarRouter = router({
       await ensureBucketExists();
 
       try {
-        const buffer =
-          arrayBuffer instanceof Uint8Array
-            ? Buffer.from(arrayBuffer)
-            : Buffer.from(new Uint8Array(arrayBuffer.data || arrayBuffer));
+        const buffer = Buffer.from(fileBase64, "base64");
         await minioClient.putObject(BUCKET_NAME, uniqueFilename, buffer);
 
         return {

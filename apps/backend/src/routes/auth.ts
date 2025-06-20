@@ -13,7 +13,6 @@ export const authRouter = router({
     .mutation(async ({ ctx, input }) => {
       try {
         const { phone } = input;
-        console.log("Updating profile with phone:", phone);
         await ctx.prisma.user.update({
           where: { id: ctx.session.user.id },
           data: {

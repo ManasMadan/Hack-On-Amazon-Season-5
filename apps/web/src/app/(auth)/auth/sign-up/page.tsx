@@ -79,8 +79,12 @@ export default function Register() {
           return;
         }
         const arrayBuffer = await values.image.arrayBuffer();
+        const base64 = btoa(
+          String.fromCharCode(...new Uint8Array(arrayBuffer))
+        );
+
         const uploadResult = await uploadImage({
-          arrayBuffer: arrayBuffer,
+          fileBase64: base64,
           filename: values.image.name,
         });
         const result = await authClient.signUp.email({

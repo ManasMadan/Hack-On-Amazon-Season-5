@@ -4,6 +4,7 @@ import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { useState } from "react";
 import { TRPCProvider } from "./trpc";
 import type { AppRouter } from "backend";
+import superjson from "superjson";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -33,6 +34,7 @@ export function CustomTRPCProvider({
     return createTRPCClient<AppRouter>({
       links: [
         httpBatchLink({
+          transformer: superjson,
           url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/trpc`,
           headers: () => {
             return {
