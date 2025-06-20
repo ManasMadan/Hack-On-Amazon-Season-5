@@ -17,10 +17,7 @@ async function ensureBucketExists() {
   try {
     const exists = await minioClient.bucketExists(BUCKET_NAME);
     if (!exists) {
-      await minioClient.makeBucket(
-        BUCKET_NAME,
-        process.env.MINIO_REGION || "us-east-1"
-      );
+      await minioClient.makeBucket(BUCKET_NAME);
       await minioClient.setBucketPolicy(
         BUCKET_NAME,
         JSON.stringify({
@@ -81,7 +78,7 @@ export const avatarRouter = router({
       const { fileKey } = input;
 
       return {
-        mediaUrl: `${process.env.MINIO_PUBLIC_ENDPOINT || "http://localhost:9000"}/${BUCKET_NAME}/${fileKey}`,
+        mediaUrl: `${process.env.MINIO_ENDPOINT || "http://localhost:9000"}/${BUCKET_NAME}/${fileKey}`,
       };
     }),
 });
