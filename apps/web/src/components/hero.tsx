@@ -14,7 +14,7 @@ export default function Hero() {
               with{" "}
               <span className="font-star-avenue relative inline-block tracking-wider">
                 SecureVoice+
-                <span className="absolute -left-[20px] bottom-1 w-[calc(100%+30px)] h-1.5 bg-gradient-to-r from-purple-400 to-blue-400"></span>
+                <span className="absolute -left-[20px] -bottom-1 w-[calc(100%+30px)] h-1.5 bg-gradient-to-r from-purple-400 to-blue-400"></span>
               </span>
             </span>
           </h1>

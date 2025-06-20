@@ -4,6 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --page-background: #ffffff;
   --background: oklch(0.9818 0.0054 95.0986);
   --foreground: oklch(0.3438 0.0269 95.7226);
   --card: oklch(0.9818 0.0054 95.0986);
@@ -60,6 +61,7 @@
 }
 
 .dark {
+  --page-background: #121212;
   --background: oklch(0.2679 0.0036 106.6427);
   --foreground: oklch(0.8074 0.0142 93.0137);
   --card: oklch(0.2679 0.0036 106.6427);
@@ -116,6 +118,7 @@
 }
 
 @theme inline {
+  --color-page-background: var(--page-background);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

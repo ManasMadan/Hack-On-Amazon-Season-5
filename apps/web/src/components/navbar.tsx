@@ -1,6 +1,15 @@
 "use client";
 import React from "react";
-import { Drawer, DrawerContent, DrawerTrigger } from "@repo/ui/drawer";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@repo/ui/drawer";
 import { Menu } from "lucide-react";
 import DarkModeToggle from "./dark-mode-toggle";
 import Link from "next/link";
@@ -55,19 +64,64 @@ const TryNowButton = () => {
 };
 
 export default function Navbar() {
-  return (
-    <div className="px-4 sm:px-8 py-4 sm:py-8 flex justify-between items-center">
-      <div className="font-star-avenue text-4xl lg:text-5xl">SecureVoice+</div>
+  const pathname = usePathname();
+  const [open, setOpen] = React.useState(false);
 
-      <nav className="hidden md:flex gap-4 lg:gap-8 text-lg lg:text-2xl items-center">
-        <div>How it Works?</div>
-        <div>Features</div>
-        <div>Team</div>
+  const scrollToId = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
+    setOpen(false);
+    e.preventDefault();
+    const elementId = (e.target as HTMLAnchorElement).href.split(
+      "#"
+    )[1] as string;
+    const element = document.getElementById(elementId);
+    const navbar = document.getElementById("navbar");
+    if (element) {
+      scrollTo({
+        top: element.offsetTop - (navbar?.offsetHeight || 0),
+        left: 0,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  return (
+    <div
+      id="navbar"
+      className="z-50 sticky bg-page-background top-0 px-4 sm:px-8 py-4 sm:py-8 flex justify-between items-center"
+    >
+      <Link
+        href={pathname.startsWith("/dashboard") ? "/dashboard" : "/"}
+        className="font-star-avenue text-4xl lg:text-5xl"
+      >
+        SecureVoice+
+      </Link>
+
+      <nav
+        className={
+          "hidden md:flex gap-4 lg:gap-8 text-lg lg:text-2xl items-center"
+        }
+      >
+        <div
+          className={cn("flex gap-4 lg:gap-8", {
+            hidden:
+              pathname.startsWith("/dashboard") || pathname.startsWith("/auth"),
+          })}
+        >
+          <Link href="/#how-it-works" onClick={scrollToId}>
+            How it Works?
+          </Link>
+          <Link href="/#features" onClick={scrollToId}>
+            Features
+          </Link>
+          <Link href="/#team" onClick={scrollToId}>
+            Team
+          </Link>
+        </div>
         <DarkModeToggle />
         <TryNowButton />
       </nav>
 
-      <Drawer>
+      <Drawer open={open} onOpenChange={setOpen}>
         <DrawerTrigger asChild className="flex gap-4 items-center md:hidden">
           <div>
             <DarkModeToggle />
@@ -75,12 +129,39 @@ export default function Navbar() {
           </div>
         </DrawerTrigger>
         <DrawerContent>
-          <div className="flex flex-col items-center gap-4 p-6 text-lg">
-            <div>How it Works?</div>
-            <div>Features</div>
-            <div>Team</div>
+          <DrawerHeader>
+            <DrawerTitle>
+              <span
+                onClick={() => setOpen(false)}
+                className="text-3xl sm:text-4xl md:text-5xl font-star-avenue relative inline-block tracking-wider"
+              >
+                SecureVoice+
+                <span className="absolute -left-[20px] -bottom-1 w-[calc(100%+30px)] h-1.5 bg-gradient-to-r from-purple-400 to-blue-400"></span>
+              </span>
+            </DrawerTitle>
+            <div className="flex flex-col items-center gap-4 p-6 text-lg">
+              <div
+                className={cn("flex flex-col items-center gap-4 lg:gap-8", {
+                  hidden:
+                    pathname.startsWith("/dashboard") ||
+                    pathname.startsWith("/auth"),
+                })}
+              >
+                <Link href="/#how-it-works" onClick={scrollToId}>
+                  How it Works?
+                </Link>
+                <Link href="/#features" onClick={scrollToId}>
+                  Features
+                </Link>
+                <Link href="/#team" onClick={scrollToId}>
+                  Team
+                </Link>
+              </div>
+            </div>
+          </DrawerHeader>
+          <DrawerFooter>
             <TryNowButton />
-          </div>
+          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     </div>
