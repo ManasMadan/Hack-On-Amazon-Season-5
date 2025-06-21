@@ -1,4 +1,5 @@
-import Hero from "@/components/hero";
+import Hero from "@/components/home/hero";
+import Team from "@/components/home/team";
 import React from "react";
 
 export default function page() {
@@ -11,9 +12,7 @@ export default function page() {
       <div id="features" className="min-h-screen">
         Features
       </div>
-      <div id="team" className="min-h-screen">
-        Team
-      </div>
+      <Team />
     </div>
   );
 }
