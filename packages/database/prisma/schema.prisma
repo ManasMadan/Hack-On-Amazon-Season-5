@@ -21,6 +21,10 @@ model User {
   profileComplete     Boolean @default(false)
   sessions            Session[]
   accounts            Account[]
+  paymentMethods      PaymentMethod[]
+  voiceSamples        VoiceSample[]
+  paymentsSent        Payment[]        @relation("PaymentsSent")
+  paymentsReceived    Payment[]        @relation("PaymentsReceived")
 
   @@unique([email])
   @@unique([phoneNumber])
@@ -71,4 +75,62 @@ model Verification {
 
   @@map("verification")
   @@unique([identifier])
+}
+
+enum PaymentMethodType {
+  debit_card
+  credit_card
+  bank
+  upi_id
+}
+
+model PaymentMethod {
+  id          String      @id @default(uuid())
+  userId      String      @map("user_id")
+  type        PaymentMethodType
+  details     Json
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  archivedAt DateTime? @map("archived_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments    Payment[]
+}
+
+model VoiceSample {
+  id        String   @id @default(uuid())
+  userId    String
+  sampleKey String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  disputed
+  cancelled
+  disputed_rejected
+  disputed_accepted
+  refunded
+}
+
+model Payment {
+  id              String         @id @default(uuid())
+  fromUserId      String         @map("from_user_id")
+  toUserId        String         @map("to_user_id")
+  paymentMethodId String
+
+  amount          Float
+  date            DateTime       @default(now())
+  status          PaymentStatus  @default(pending)
+  description     String?
+
+  from            User           @relation("PaymentsSent", fields: [fromUserId], references: [id], onDelete: Cascade)
+  to              User           @relation("PaymentsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+  paymentMethod   PaymentMethod  @relation(fields: [paymentMethodId], references: [id])
 }
