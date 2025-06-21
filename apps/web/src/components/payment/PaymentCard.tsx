@@ -55,7 +55,7 @@ export default function PaymentCard({ payment }: { payment: CustomPayment }) {
   const otherParty = getOtherParty(payment);
   return (
     <Link
-      href={`/dashboard/payments/${payment.id}`}
+      href={`/dashboard/payments/detail?id=${payment.id}`}
       key={payment.id}
       className="p-3 rounded-lg hover:bg-accent transition-colors"
     >

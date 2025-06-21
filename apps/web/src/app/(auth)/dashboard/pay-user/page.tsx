@@ -34,7 +34,6 @@ import {
 } from "@repo/ui/card";
 import { Input } from "@repo/ui/input";
 import { PhoneInput } from "@repo/ui/phone-input";
-import { Textarea } from "@repo/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -43,8 +42,6 @@ import {
   SelectValue,
 } from "@repo/ui/select";
 import { Badge } from "@repo/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@repo/ui/avatar";
-import { Separator } from "@repo/ui/separator";
 
 import { useTRPC } from "@/utils/trpc";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -263,9 +260,9 @@ export default function PayUser() {
                   />
 
                   <div className="flex items-center gap-4">
-                    <Separator className="flex-1" />
+                    <div className="flex-1 border-t"></div>
                     <span className="text-sm text-muted-foreground">OR</span>
-                    <Separator className="flex-1" />
+                    <div className="flex-1 border-t"></div>
                   </div>
 
                   {/* Phone Field */}
@@ -338,19 +335,9 @@ export default function PayUser() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
-              <Avatar className="h-12 w-12">
-                <AvatarImage
-                  src={selectedUser.image || undefined}
-                  alt={selectedUser.name}
-                />
-                <AvatarFallback>
-                  {selectedUser.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
+                <User className="h-6 w-6 text-primary" />
+              </div>
               <div className="flex-1">
                 <p className="font-semibold text-lg">{selectedUser.name}</p>
                 <p className="text-muted-foreground">{selectedUser.email}</p>
@@ -476,9 +463,8 @@ export default function PayUser() {
                   <FormItem>
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea
+                      <Input
                         placeholder="What's this payment for?"
-                        rows={3}
                         {...field}
                       />
                     </FormControl>

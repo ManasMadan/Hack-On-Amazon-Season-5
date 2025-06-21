@@ -88,7 +88,7 @@ export default function Cursor() {
   }, []);
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50">
+    <div className="z-[100] pointer-events-none fixed inset-0">
       <div
         className="absolute rounded-full bg-primary"
         style={{

@@ -1,6 +1,6 @@
 "use client";
 import { useTRPC } from "@/utils/trpc";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { Button } from "@repo/ui/button";
 import { Card } from "@repo/ui/card";
@@ -60,7 +60,6 @@ const paymentTypeLabels = {
 export default function ManagePaymentMethods() {
   const { data: session } = useCustomSession();
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newPaymentMethod, setNewPaymentMethod] = useState<{
@@ -136,7 +135,6 @@ export default function ManagePaymentMethods() {
         type: newPaymentMethod.type,
         details,
       });
-      queryClient.invalidateQueries({ queryKey: ["paymentMethods"] });
       setIsAddDialogOpen(false);
       setNewPaymentMethod({ type: "credit_card", details: {} });
       toast.success("Payment method added successfully");
@@ -148,7 +146,6 @@ export default function ManagePaymentMethods() {
   const handleArchivePaymentMethod = async (id: string) => {
     try {
       await archivePaymentMethod({ id });
-      queryClient.invalidateQueries({ queryKey: ["paymentMethods"] });
       toast.success("Payment method archived");
     } catch (error) {
       toast.error("Failed to archive payment method");
@@ -161,7 +158,6 @@ export default function ManagePaymentMethods() {
         id,
         isDefault,
       });
-      queryClient.invalidateQueries({ queryKey: ["paymentMethods"] });
       toast.success("Default payment method updated");
     } catch (error) {
       toast.error("Failed to update default payment method");
