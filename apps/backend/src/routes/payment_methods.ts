@@ -6,7 +6,6 @@ export const paymentMethodsRouter = router({
   create: protectedProcedure
     .input(
       z.object({
-        userId: z.string(),
         type: z.enum([
           PaymentMethodType.debit_card,
           PaymentMethodType.credit_card,
@@ -17,13 +16,19 @@ export const paymentMethodsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { userId, type, details } = input;
+      const { type, details } = input;
+      const userId = ctx.session.user.id;
+
+      const existingMethodsCount = await ctx.prisma.paymentMethod.count({
+        where: { userId, archivedAt: null },
+      });
 
       const paymentMethod = await ctx.prisma.paymentMethod.create({
         data: {
           userId,
           type,
           details,
+          isDefault: existingMethodsCount === 0,
         },
       });
 
@@ -33,12 +38,12 @@ export const paymentMethodsRouter = router({
   listUserPaymentMethods: protectedProcedure
     .input(
       z.object({
-        userId: z.string(),
         includeArchived: z.boolean().optional().default(false),
       })
     )
     .query(async ({ ctx, input }) => {
-      const { userId, includeArchived } = input;
+      const { includeArchived } = input;
+      const userId = ctx.session.user.id;
 
       let whereClause: Prisma.PaymentMethodWhereInput = { userId };
 
@@ -63,9 +68,10 @@ export const paymentMethodsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const { id } = input;
+      const userId = ctx.session.user.id;
 
       return await ctx.prisma.paymentMethod.update({
-        where: { id },
+        where: { id, userId: userId },
         data: {
           archivedAt: new Date(),
         },
@@ -80,21 +86,30 @@ export const paymentMethodsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const { id } = input;
+      const userId = ctx.session.user.id;
 
-      return await ctx.prisma.paymentMethod.findUnique({
+      const paymentMethod = await ctx.prisma.paymentMethod.findUnique({
         where: { id },
       });
+
+      if (!paymentMethod || paymentMethod.userId !== userId) {
+        throw new Error(
+          "Unauthorized: Payment method not found or doesn't belong to the user"
+        );
+      }
+
+      return paymentMethod;
     }),
   updateDefaultStatus: protectedProcedure
     .input(
       z.object({
         id: z.string(),
         isDefault: z.boolean(),
-        userId: z.string(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, isDefault, userId } = input;
+      const { id, isDefault } = input;
+      const userId = ctx.session.user.id;
 
       return await ctx.prisma.$transaction(async (prisma) => {
         if (isDefault) {
