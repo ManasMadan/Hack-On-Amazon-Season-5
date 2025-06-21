@@ -70,13 +70,15 @@ export default function ManagePaymentMethods() {
   });
   const [includeArchived, setIncludeArchived] = useState(false);
 
-  const { data: paymentMethods, refetch: refetchPaymentMethods } = useQuery(
+  const {
+    data: paymentMethods,
+    refetch: refetchPaymentMethods,
+    isPending: paymentMethodsLoading,
+  } = useQuery(
     trpc.paymentMethods.listUserPaymentMethods.queryOptions({
       includeArchived: includeArchived,
     })
   );
-
-  const isLoading = false;
 
   // Mutations
   const { mutateAsync: createPaymentMethod } = useMutation(
@@ -415,7 +417,7 @@ export default function ManagePaymentMethods() {
 
       {/* Payment Methods List */}
       <div className="grid gap-4">
-        {isLoading ? (
+        {paymentMethodsLoading ? (
           <div className="text-center py-8">Loading payment methods...</div>
         ) : !paymentMethods || paymentMethods.length === 0 ? (
           <Card className="p-8 text-center">
@@ -434,7 +436,7 @@ export default function ManagePaymentMethods() {
             </Button>
           </Card>
         ) : (
-          (paymentMethods as PaymentMethod[]).map((method: PaymentMethod) => {
+          paymentMethods.map((method) => {
             const Icon = paymentTypeIcons[method.type];
             return (
               <Card
