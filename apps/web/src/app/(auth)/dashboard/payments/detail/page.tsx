@@ -2,13 +2,7 @@
 
 import React from "react";
 import { useSearchParams } from "next/navigation";
-import {
-  ArrowLeft,
-  ArrowUpRight,
-  ArrowDownLeft,
-  Receipt,
-  RefreshCw,
-} from "lucide-react";
+import { ArrowLeft, Receipt, RefreshCw } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@repo/ui/button";
@@ -22,7 +16,6 @@ import { PaymentMethodDetails } from "@/components/payment/PaymentMethodDetails"
 import { useTRPC } from "@/utils/trpc";
 import { useQuery } from "@tanstack/react-query";
 import { useCustomSession } from "@/hooks/useCustomSession";
-import { PaymentStatus } from "@repo/database";
 
 export default function PaymentDetailPage() {
   const searchParams = useSearchParams();

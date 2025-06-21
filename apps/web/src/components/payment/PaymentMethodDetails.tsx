@@ -1,11 +1,12 @@
-// TODO
 import React from "react";
 import { CreditCard } from "lucide-react";
+import { getPaymentMethodDisplayText } from "@/utils/paymentMethods";
 
 interface PaymentMethodDetailsProps {
   paymentMethod: {
     id: string;
     type: string;
+    details?: any;
   };
 }
 
@@ -26,8 +27,15 @@ export function PaymentMethodDetails({
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Method ID:</span>
-          <span className="font-mono text-xs">{paymentMethod.id}</span>
+          <span className="text-muted-foreground">Details:</span>
+          <span>
+            {paymentMethod.details
+              ? getPaymentMethodDisplayText({
+                  type: paymentMethod.type as any,
+                  details: paymentMethod.details,
+                })
+              : paymentMethod.id.slice(-8)}
+          </span>
         </div>
       </div>
     </div>

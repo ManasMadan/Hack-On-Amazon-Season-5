@@ -2,22 +2,13 @@ import React from "react";
 import { Badge } from "@repo/ui/badge";
 import { ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import Link from "next/link";
-import { Payment } from "@repo/database";
 import { useCustomSession } from "@/hooks/useCustomSession";
 import { formatDistance, subDays } from "date-fns";
+import type { inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "backend";
 
-type CustomPayment = Payment & {
-  from: {
-    id: string;
-    name: string;
-    email: string;
-  };
-  to: {
-    id: string;
-    name: string;
-    email: string;
-  };
-};
+type Payment =
+  inferRouterOutputs<AppRouter>["payments"]["listAllPayments"]["payments"][0];
 
 const getStatusBadgeVariant = (status: string) => {
   switch (status) {
@@ -40,14 +31,14 @@ const getStatusBadgeVariant = (status: string) => {
   }
 };
 
-export default function PaymentCard({ payment }: { payment: CustomPayment }) {
+export default function PaymentCard({ payment }: { payment: Payment }) {
   const { data } = useCustomSession();
-  const getPaymentType = (payment: CustomPayment) => {
+  const getPaymentType = (payment: Payment) => {
     if (!data || !data.user) return "credit";
     return payment.toUserId === data.user.id ? "credit" : "debit";
   };
 
-  const getOtherParty = (payment: CustomPayment) => {
+  const getOtherParty = (payment: Payment) => {
     if (!data || !data.user) return payment.from;
     return payment.toUserId === data.user.id ? payment.from : payment.to;
   };

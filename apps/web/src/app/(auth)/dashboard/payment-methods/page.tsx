@@ -42,6 +42,7 @@ import {
 } from "@repo/ui/dropdown-menu";
 import { PaymentMethod, PaymentMethodType } from "@repo/database";
 import Link from "next/link";
+import { getPaymentMethodDisplayText } from "@/utils/paymentMethods";
 
 const paymentTypeIcons = {
   debit_card: CreditCard,
@@ -164,18 +165,8 @@ export default function ManagePaymentMethods() {
     }
   };
 
-  const getPaymentMethodDisplayText = (method: any) => {
-    switch (method.type) {
-      case "credit_card":
-      case "debit_card":
-        return `**** **** **** ${method.details.last4}`;
-      case "bank":
-        return `${method.details.bankName} - ****${method.details.accountNumber?.slice(-4)}`;
-      case "upi_id":
-        return method.details.upiId;
-      default:
-        return "Unknown";
-    }
+  const getPaymentMethodDisplayTextLocal = (method: any) => {
+    return getPaymentMethodDisplayText(method);
   };
 
   const renderPaymentMethodForm = () => {
@@ -469,7 +460,7 @@ export default function ManagePaymentMethods() {
                         )}
                       </div>
                       <p className="text-muted-foreground">
-                        {getPaymentMethodDisplayText(method)}
+                        {getPaymentMethodDisplayTextLocal(method)}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         Added {new Date(method.createdAt).toLocaleDateString()}

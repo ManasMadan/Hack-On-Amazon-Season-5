@@ -46,7 +46,9 @@ import { Badge } from "@repo/ui/badge";
 import { useTRPC } from "@/utils/trpc";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PaymentMethod } from "@repo/database";
-
+import { getPaymentMethodDisplayText } from "@/utils/paymentMethods";
+import type { inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "backend";
 // Form validation schema
 const findUserSchema = z
   .object({
@@ -78,13 +80,7 @@ const paymentSchema = z.object({
   description: z.string().max(500, "Description too long").optional(),
 });
 
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  phoneNumber: string | null;
-  image: string | null;
-};
+type User = inferRouterOutputs<AppRouter>["users"]["findUserByEmailOrPhone"];
 
 export default function PayUser() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -183,23 +179,7 @@ export default function PayUser() {
   }
 
   const getPaymentMethodDisplay = (method: PaymentMethod) => {
-    switch (method.type) {
-      case "credit_card":
-      case "debit_card": {
-        const details = method.details as { lastFour?: string } | undefined;
-        return `**** ${details?.lastFour || "****"}`;
-      }
-      case "bank": {
-        const details = method.details as { bankName?: string } | undefined;
-        return `${details?.bankName || "Bank"} ****`;
-      }
-      case "upi_id": {
-        const details = method.details as { upiId?: string } | undefined;
-        return details?.upiId || "UPI";
-      }
-      default:
-        return method.type;
-    }
+    return getPaymentMethodDisplayText(method);
   };
 
   if (step === "find") {

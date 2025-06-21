@@ -81,6 +81,16 @@ export const paymentsRouter = router({
         },
       });
 
+      // Create initial timeline entry
+      await ctx.prisma.paymentTimeline.create({
+        data: {
+          paymentId: payment.id,
+          status: PaymentStatus.pending,
+          description: "Payment created",
+          notes: "Payment has been initiated",
+        },
+      });
+
       return payment;
     }),
 
@@ -272,7 +282,11 @@ export const paymentsRouter = router({
             select: {
               id: true,
               type: true,
+              details: true,
             },
+          },
+          timeline: {
+            orderBy: { createdAt: "asc" },
           },
         },
       });
@@ -300,10 +314,11 @@ export const paymentsRouter = router({
       z.object({
         id: z.string().uuid(),
         status: z.nativeEnum(PaymentStatus),
+        notes: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, status } = input;
+      const { id, status, notes } = input;
       const userId = ctx.session.user.id;
 
       // First verify the payment exists and user has access
@@ -361,34 +376,64 @@ export const paymentsRouter = router({
         });
       }
 
-      const updatedPayment = await ctx.prisma.payment.update({
-        where: { id },
-        data: { status },
-        include: {
-          from: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
+      const result = await ctx.prisma.$transaction(async (prisma) => {
+        // Update payment status
+        const updatedPayment = await prisma.payment.update({
+          where: { id },
+          data: { status },
+          include: {
+            from: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            to: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            paymentMethod: {
+              select: {
+                id: true,
+                type: true,
+                details: true,
+              },
+            },
+            timeline: {
+              orderBy: { createdAt: "asc" },
             },
           },
-          to: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
+        });
+
+        // Create timeline entry for status change
+        const statusDescriptions = {
+          [PaymentStatus.pending]: "Payment is pending",
+          [PaymentStatus.completed]: "Payment completed successfully",
+          [PaymentStatus.failed]: "Payment failed",
+          [PaymentStatus.cancelled]: "Payment was cancelled",
+          [PaymentStatus.disputed]: "Payment is under dispute",
+          [PaymentStatus.disputed_accepted]: "Dispute was accepted",
+          [PaymentStatus.disputed_rejected]: "Dispute was rejected",
+          [PaymentStatus.refunded]: "Payment was refunded",
+        };
+
+        await prisma.paymentTimeline.create({
+          data: {
+            paymentId: id,
+            status,
+            description: statusDescriptions[status],
+            notes: notes || undefined,
           },
-          paymentMethod: {
-            select: {
-              id: true,
-              type: true,
-            },
-          },
-        },
+        });
+
+        return updatedPayment;
       });
 
-      return updatedPayment;
+      return result;
     }),
 
   getPaymentStats: protectedProcedure.query(async ({ ctx }) => {

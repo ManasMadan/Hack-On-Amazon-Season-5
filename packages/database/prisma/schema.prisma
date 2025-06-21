@@ -135,4 +135,18 @@ model Payment {
   from            User           @relation("PaymentsSent", fields: [fromUserId], references: [id], onDelete: Cascade)
   to              User           @relation("PaymentsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
   paymentMethod   PaymentMethod  @relation(fields: [paymentMethodId], references: [id])
+  timeline        PaymentTimeline[]
+}
+
+model PaymentTimeline {
+  id          String         @id @default(uuid())
+  paymentId   String         @map("payment_id")
+  status      PaymentStatus
+  description String?
+  notes       String?
+  createdAt   DateTime       @default(now())
+
+  payment     Payment        @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@map("payment_timeline")
 }
