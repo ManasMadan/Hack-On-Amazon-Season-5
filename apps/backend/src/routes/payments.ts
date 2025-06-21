@@ -1,0 +1,417 @@
+import { z } from "zod";
+import { router, protectedProcedure } from "@/trpc";
+import { Prisma, PaymentStatus } from "@repo/database";
+import { TRPCError } from "@trpc/server";
+
+export const paymentsRouter = router({
+  create: protectedProcedure
+    .input(
+      z.object({
+        toUserId: z.string().uuid(),
+        paymentMethodId: z.string().uuid(),
+        amount: z.number().positive().max(1000000), // Max amount limit
+        description: z.string().max(500).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { toUserId, paymentMethodId, amount, description } = input;
+      const fromUserId = ctx.session.user.id;
+
+      // Prevent self-payment
+      if (fromUserId === toUserId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot send payment to yourself",
+        });
+      }
+
+      // Verify the payment method belongs to the authenticated user and is not archived
+      const paymentMethod = await ctx.prisma.paymentMethod.findFirst({
+        where: {
+          id: paymentMethodId,
+          userId: fromUserId,
+          archivedAt: null,
+        },
+      });
+
+      if (!paymentMethod) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Payment method not found or archived",
+        });
+      }
+
+      // Verify the recipient user exists
+      const toUser = await ctx.prisma.user.findUnique({
+        where: { id: toUserId },
+        select: { id: true }, // Only select id for security
+      });
+
+      if (!toUser) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Recipient user not found",
+        });
+      }
+
+      // Create the payment
+      const payment = await ctx.prisma.payment.create({
+        data: {
+          fromUserId,
+          toUserId,
+          paymentMethodId,
+          amount,
+          description,
+          status: PaymentStatus.pending,
+        },
+        include: {
+          to: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          paymentMethod: {
+            select: {
+              id: true,
+              type: true,
+            },
+          },
+        },
+      });
+
+      return payment;
+    }),
+
+  listSentPayments: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).default(20),
+        offset: z.number().min(0).default(0),
+        status: z.nativeEnum(PaymentStatus).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const { limit, offset, status } = input;
+      const userId = ctx.session.user.id;
+
+      const whereClause: Prisma.PaymentWhereInput = {
+        fromUserId: userId,
+        ...(status && { status }),
+      };
+
+      const payments = await ctx.prisma.payment.findMany({
+        where: whereClause,
+        include: {
+          to: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          paymentMethod: {
+            select: {
+              id: true,
+              type: true,
+            },
+          },
+        },
+        orderBy: { date: "desc" },
+        take: limit,
+        skip: offset,
+      });
+
+      const total = await ctx.prisma.payment.count({
+        where: whereClause,
+      });
+
+      return {
+        payments,
+        total,
+        hasMore: offset + limit < total,
+      };
+    }),
+
+  listReceivedPayments: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).default(20),
+        offset: z.number().min(0).default(0),
+        status: z.nativeEnum(PaymentStatus).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const { limit, offset, status } = input;
+      const userId = ctx.session.user.id;
+
+      const whereClause: Prisma.PaymentWhereInput = {
+        toUserId: userId,
+        ...(status && { status }),
+      };
+
+      const payments = await ctx.prisma.payment.findMany({
+        where: whereClause,
+        include: {
+          from: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          paymentMethod: {
+            select: {
+              id: true,
+              type: true,
+            },
+          },
+        },
+        orderBy: { date: "desc" },
+        take: limit,
+        skip: offset,
+      });
+
+      const total = await ctx.prisma.payment.count({
+        where: whereClause,
+      });
+
+      return {
+        payments,
+        total,
+        hasMore: offset + limit < total,
+      };
+    }),
+
+  listAllPayments: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).default(20),
+        offset: z.number().min(0).default(0),
+        status: z.nativeEnum(PaymentStatus).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const { limit, offset, status } = input;
+      const userId = ctx.session.user.id;
+
+      const whereClause: Prisma.PaymentWhereInput = {
+        OR: [{ fromUserId: userId }, { toUserId: userId }],
+        ...(status && { status }),
+      };
+
+      const payments = await ctx.prisma.payment.findMany({
+        where: whereClause,
+        include: {
+          from: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          to: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          paymentMethod: {
+            select: {
+              id: true,
+              type: true,
+            },
+          },
+        },
+        orderBy: { date: "desc" },
+        take: limit,
+        skip: offset,
+      });
+
+      const total = await ctx.prisma.payment.count({
+        where: whereClause,
+      });
+
+      return {
+        payments,
+        total,
+        hasMore: offset + limit < total,
+      };
+    }),
+
+  getPayment: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const { id } = input;
+      const userId = ctx.session.user.id;
+
+      const payment = await ctx.prisma.payment.findUnique({
+        where: { id },
+        include: {
+          from: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          to: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          paymentMethod: {
+            select: {
+              id: true,
+              type: true,
+            },
+          },
+        },
+      });
+
+      if (!payment) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Payment not found",
+        });
+      }
+
+      // Ensure user is either sender or recipient
+      if (payment.fromUserId !== userId && payment.toUserId !== userId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You don't have access to this payment",
+        });
+      }
+
+      return payment;
+    }),
+
+  updateStatus: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        status: z.nativeEnum(PaymentStatus),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, status } = input;
+      const userId = ctx.session.user.id;
+
+      // First verify the payment exists and user has access
+      const existingPayment = await ctx.prisma.payment.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          fromUserId: true,
+          toUserId: true,
+          status: true,
+        },
+      });
+
+      if (!existingPayment) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Payment not found",
+        });
+      }
+
+      // Only sender can update payment status (e.g., cancel pending payments)
+      // Recipients might need different permissions based on business logic
+      if (existingPayment.fromUserId !== userId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You don't have permission to update this payment",
+        });
+      }
+
+      // Business logic: only allow certain status transitions
+      const validTransitions: Record<PaymentStatus, PaymentStatus[]> = {
+        [PaymentStatus.pending]: [
+          PaymentStatus.cancelled,
+          PaymentStatus.completed,
+        ],
+        [PaymentStatus.completed]: [
+          PaymentStatus.disputed,
+          PaymentStatus.refunded,
+        ],
+        [PaymentStatus.failed]: [],
+        [PaymentStatus.disputed]: [
+          PaymentStatus.disputed_rejected,
+          PaymentStatus.disputed_accepted,
+        ],
+        [PaymentStatus.cancelled]: [],
+        [PaymentStatus.disputed_rejected]: [],
+        [PaymentStatus.disputed_accepted]: [PaymentStatus.refunded],
+        [PaymentStatus.refunded]: [],
+      };
+
+      if (!validTransitions[existingPayment.status]?.includes(status)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot change payment status from ${existingPayment.status} to ${status}`,
+        });
+      }
+
+      const updatedPayment = await ctx.prisma.payment.update({
+        where: { id },
+        data: { status },
+        include: {
+          from: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          to: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          paymentMethod: {
+            select: {
+              id: true,
+              type: true,
+            },
+          },
+        },
+      });
+
+      return updatedPayment;
+    }),
+
+  getPaymentStats: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const [sentStats, receivedStats] = await Promise.all([
+      ctx.prisma.payment.aggregate({
+        where: { fromUserId: userId },
+        _sum: { amount: true },
+        _count: { id: true },
+      }),
+      ctx.prisma.payment.aggregate({
+        where: { toUserId: userId },
+        _sum: { amount: true },
+        _count: { id: true },
+      }),
+    ]);
+
+    return {
+      totalSent: sentStats._sum.amount || 0,
+      totalSentCount: sentStats._count.id || 0,
+      totalReceived: receivedStats._sum.amount || 0,
+      totalReceivedCount: receivedStats._count.id || 0,
+    };
+  }),
+});
