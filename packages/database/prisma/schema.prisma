@@ -94,6 +94,8 @@ model PaymentMethod {
 
   archivedAt DateTime? @map("archived_at")
 
+  isDefault      Boolean @default(false)
+
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   payments    Payment[]
 }

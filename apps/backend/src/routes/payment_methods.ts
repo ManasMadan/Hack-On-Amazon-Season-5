@@ -85,4 +85,56 @@ export const paymentMethodsRouter = router({
         where: { id },
       });
     }),
+  updateDefaultStatus: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        isDefault: z.boolean(),
+        userId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id, isDefault, userId } = input;
+
+      return await ctx.prisma.$transaction(async (prisma) => {
+        if (isDefault) {
+          await prisma.paymentMethod.updateMany({
+            where: {
+              userId,
+              isDefault: true,
+            },
+            data: {
+              isDefault: false,
+            },
+          });
+        }
+
+        // Update the specified payment method
+        const updatedMethod = await prisma.paymentMethod.update({
+          where: { id },
+          data: { isDefault: isDefault },
+        });
+
+        // When archiving a default payment method, set another one as default
+        if (!isDefault && updatedMethod.archivedAt) {
+          const nextDefaultMethod = await prisma.paymentMethod.findFirst({
+            where: {
+              userId,
+              archivedAt: null,
+              id: { not: id },
+            },
+            orderBy: { createdAt: "desc" },
+          });
+
+          if (nextDefaultMethod) {
+            await prisma.paymentMethod.update({
+              where: { id: nextDefaultMethod.id },
+              data: { isDefault: true },
+            });
+          }
+        }
+
+        return updatedMethod;
+      });
+    }),
 });
