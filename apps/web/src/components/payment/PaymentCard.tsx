@@ -4,6 +4,7 @@ import { ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import Link from "next/link";
 import { Payment } from "@repo/database";
 import { useCustomSession } from "@/hooks/useCustomSession";
+import { formatDistance, subDays } from "date-fns";
 
 type CustomPayment = Payment & {
   from: {
@@ -84,7 +85,7 @@ export default function PaymentCard({ payment }: { payment: CustomPayment }) {
       </div>
       <div className="flex items-center justify-between">
         <p className="text-base text-muted-foreground">
-          {payment.date.toISOString()}
+          {formatDistance(payment.date, new Date(), { addSuffix: true })}
         </p>
         <Badge
           variant={getStatusBadgeVariant(payment.status)}

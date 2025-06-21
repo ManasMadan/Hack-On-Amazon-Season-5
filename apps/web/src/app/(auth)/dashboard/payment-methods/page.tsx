@@ -32,6 +32,7 @@ import {
   Star,
   Archive,
   Check,
+  ArrowLeft,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -40,6 +41,7 @@ import {
   DropdownMenuTrigger,
 } from "@repo/ui/dropdown-menu";
 import { PaymentMethod, PaymentMethodType } from "@repo/database";
+import Link from "next/link";
 
 const paymentTypeIcons = {
   debit_card: CreditCard,
@@ -335,22 +337,37 @@ export default function ManagePaymentMethods() {
 
   if (!session) {
     return (
-      <div className="max-w-[1400px] mx-auto p-6">
+      <div className="max-w-2xl mx-auto p-6">
         Please log in to manage payment methods.
       </div>
     );
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto p-6 space-y-6">
+    <div className="max-w-2xl mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-4 mb-8">
+        <Button variant="ghost" size="icon" asChild>
+          <Link href="/dashboard">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
         <div>
           <h1 className="text-3xl font-bold">Payment Methods</h1>
           <p className="text-muted-foreground">
             Manage your payment methods and preferences
           </p>
         </div>
+      </div>
+
+      {/* Toggle for archived methods */}
+      <div className="flex items-center justify-between gap-2">
+        <Button
+          variant={includeArchived ? "default" : "outline"}
+          onClick={() => setIncludeArchived(!includeArchived)}
+        >
+          {includeArchived ? "Hide" : "Show"} Archived Methods
+        </Button>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="flex items-center gap-2">
@@ -402,17 +419,6 @@ export default function ManagePaymentMethods() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
-
-      {/* Toggle for archived methods */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant={includeArchived ? "default" : "outline"}
-          size="sm"
-          onClick={() => setIncludeArchived(!includeArchived)}
-        >
-          {includeArchived ? "Hide" : "Show"} Archived Methods
-        </Button>
       </div>
 
       {/* Payment Methods List */}

@@ -7,7 +7,7 @@ export const paymentsRouter = router({
   create: protectedProcedure
     .input(
       z.object({
-        toUserId: z.string().uuid(),
+        toUserId: z.string(),
         paymentMethodId: z.string().uuid(),
         amount: z.number().positive().max(1000000), // Max amount limit
         description: z.string().max(500).optional(),
