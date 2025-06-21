@@ -16,72 +16,8 @@ import { Button } from "@repo/ui/button";
 import Link from "next/link";
 import PaymentCard from "@/components/payment/PaymentCard";
 import { Input } from "@repo/ui/input";
-
-const payments = [
-  {
-    id: "1",
-    from: "John Doe",
-    to: "You",
-    amount: 250.0,
-    date: "2024-01-15",
-    status: "COMPLETED",
-    description: "Dinner split",
-  },
-  {
-    id: "2",
-    from: "You",
-    to: "Sarah Wilson",
-    amount: 75.5,
-    date: "2024-01-14",
-    status: "PENDING",
-    description: "Coffee payment",
-  },
-  {
-    id: "3",
-    from: "Mike Johnson",
-    to: "You",
-    amount: 120.0,
-    date: "2024-01-13",
-    status: "DISPUTED",
-    description: "Freelance work",
-  },
-  {
-    id: "4",
-    from: "You",
-    to: "Alex Chen",
-    amount: 300.0,
-    date: "2024-01-12",
-    status: "FAILED",
-    description: "Rent contribution",
-  },
-  {
-    id: "5",
-    from: "Emma Davis",
-    to: "You",
-    amount: 45.0,
-    date: "2024-01-11",
-    status: "CANCELLED",
-    description: "Movie tickets",
-  },
-  {
-    id: "6",
-    from: "You",
-    to: "Tom Brown",
-    amount: 180.0,
-    date: "2024-01-10",
-    status: "DISPUTED ACCEPTED",
-    description: "Utility bill",
-  },
-  {
-    id: "7",
-    from: "Lisa White",
-    to: "You",
-    amount: 95.0,
-    date: "2024-01-09",
-    status: "DISPUTE REJECTED",
-    description: "Grocery split",
-  },
-];
+import { useTRPC } from "@/utils/trpc";
+import { useQuery } from "@tanstack/react-query";
 
 const actionButtons = [
   {
@@ -113,6 +49,10 @@ const actionButtons = [
 export default function PaymentDashboard() {
   const [chatMessage, setChatMessage] = React.useState("");
   const [isListening, setIsListening] = React.useState(false);
+  const trpc = useTRPC();
+  const { data: result } = useQuery(
+    trpc.payments.listAllPayments.queryOptions({ limit: 5 })
+  );
 
   const handleSendMessage = () => {
     if (chatMessage.trim()) {
@@ -205,9 +145,19 @@ export default function PaymentDashboard() {
           className="flex h-[60vh] overflow-y-scroll flex-col gap-8 pr-2"
           data-lenis-prevent
         >
-          {payments.slice(0, 5).map((payment) => (
-            <PaymentCard key={payment.id} payment={payment} />
-          ))}
+          {result ? (
+            result.payments.length > 0 ? (
+              result.payments
+                .slice(0, 5)
+                .map((payment) => (
+                  <PaymentCard key={payment.id} payment={payment} />
+                ))
+            ) : (
+              <p>No payments found</p>
+            )
+          ) : (
+            <p>Something went wrong</p>
+          )}
         </div>
 
         <Button variant="outline" className="text-lg h-12 w-full mt-4" asChild>

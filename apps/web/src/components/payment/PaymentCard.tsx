@@ -2,16 +2,21 @@ import React from "react";
 import { Badge } from "@repo/ui/badge";
 import { ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import Link from "next/link";
+import { Payment } from "@repo/database";
+import { useCustomSession } from "@/hooks/useCustomSession";
 
-export interface Payment {
-  id: string;
-  from: string;
-  to: string;
-  amount: number;
-  date: string;
-  status: string;
-  description: string;
-}
+type CustomPayment = Payment & {
+  from: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  to: {
+    id: string;
+    name: string;
+    email: string;
+  };
+};
 
 const getStatusBadgeVariant = (status: string) => {
   switch (status) {
@@ -34,18 +39,19 @@ const getStatusBadgeVariant = (status: string) => {
   }
 };
 
-const getPaymentType = (payment: Payment) => {
-  return payment.to === "You" ? "credit" : "debit";
-};
+export default function PaymentCard({ payment }: { payment: CustomPayment }) {
+  const { data } = useCustomSession();
+  const getPaymentType = (payment: CustomPayment) => {
+    if (!data || !data.user) return "credit";
+    return payment.toUserId === data.user.id ? "credit" : "debit";
+  };
 
-const getOtherParty = (payment: Payment) => {
-  return payment.to === "You" ? payment.from : payment.to;
-};
-
-export default function PaymentCard({ payment }: { payment: Payment }) {
+  const getOtherParty = (payment: CustomPayment) => {
+    if (!data || !data.user) return payment.from;
+    return payment.toUserId === data.user.id ? payment.from : payment.to;
+  };
   const type = getPaymentType(payment);
   const otherParty = getOtherParty(payment);
-
   return (
     <Link
       href={`/dashboard/payments/${payment.id}`}
@@ -64,7 +70,7 @@ export default function PaymentCard({ payment }: { payment: Payment }) {
             )}
           </div>
           <div>
-            <p className="font-medium text-xl">{otherParty}</p>
+            <p className="font-medium text-xl">{otherParty.name}</p>
             <p className="text-lg text-muted-foreground">
               {payment.description}
             </p>
@@ -77,7 +83,9 @@ export default function PaymentCard({ payment }: { payment: Payment }) {
         </p>
       </div>
       <div className="flex items-center justify-between">
-        <p className="text-base text-muted-foreground">{payment.date}</p>
+        <p className="text-base text-muted-foreground">
+          {payment.date.toISOString()}
+        </p>
         <Badge
           variant={getStatusBadgeVariant(payment.status)}
           className="text-base"
