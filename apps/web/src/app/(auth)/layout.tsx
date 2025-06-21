@@ -58,5 +58,5 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     return redirect("/dashboard");
   }
 
-  return <>{children}</>;
+  return children;
 }

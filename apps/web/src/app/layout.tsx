@@ -29,7 +29,6 @@ export default function RootLayout({
             <Cursor />
             <Navbar />
             <Toaster />
-
             {children}
           </CustomTRPCProvider>
         </ThemeProvider>
