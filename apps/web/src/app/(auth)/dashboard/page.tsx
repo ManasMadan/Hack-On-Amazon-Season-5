@@ -12,10 +12,10 @@ import {
   Send,
   MicOff,
 } from "lucide-react";
-import { Textarea } from "@repo/ui/textarea";
 import { Button } from "@repo/ui/button";
 import Link from "next/link";
 import PaymentCard from "@/components/payment/PaymentCard";
+import { Input } from "@repo/ui/input";
 
 const payments = [
   {
@@ -88,25 +88,25 @@ const actionButtons = [
     title: "Pay User",
     description: "Send money to friends and family",
     icon: User,
-    href: "/pay-user",
+    href: "/dashboard/pay-user",
   },
   {
     title: "Manage Voice Sample",
     description: "Update your voice authentication",
     icon: Mic2,
-    href: "/voice-sample",
+    href: "/dashboard/voice-sample",
   },
   {
     title: "Manage Payment Methods",
     description: "Smart routing options",
     icon: Settings,
-    href: "/payment-methods",
+    href: "/dashboard/payment-methods",
   },
   {
     title: "Receive Payments",
     description: "Receive money from friends and family",
     icon: ArrowUpRight,
-    href: "/receive-payments",
+    href: "/dashboard/receive-payments",
   },
 ];
 
@@ -170,7 +170,7 @@ export default function PaymentDashboard() {
           </Button>
 
           <div className="relative flex-1 h-20">
-            <Textarea
+            <Input
               className="h-full pr-12 resize-none"
               placeholder="How can I help you today?"
               value={chatMessage}
