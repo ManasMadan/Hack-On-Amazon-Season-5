@@ -129,10 +129,6 @@ export default function PaymentDashboard() {
     console.log("Starting voice call...");
   };
 
-  const handleViewAllPayments = () => {
-    console.log("Navigating to all payments...");
-  };
-
   return (
     <div className="max-w-[1400px] h-full mt-8 mx-auto px-6 sm:px-12 2xl:px-0 py-6 flex flex-col md:flex-row gap-6 justify-end">
       {/* Left Column - Actions */}

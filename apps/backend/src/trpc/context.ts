@@ -2,7 +2,6 @@ import { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import { prisma } from "@repo/database";
 import { auth, Session } from "@repo/auth";
 import { fromNodeHeaders } from "better-auth/node";
-import * as Minio from "minio";
 
 export const createContext = async (
   opts: CreateExpressContextOptions
