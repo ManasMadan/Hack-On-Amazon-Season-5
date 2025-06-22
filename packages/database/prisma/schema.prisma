@@ -92,6 +92,12 @@ model PaymentMethod {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
+  failedPayments Int @default(0)
+  successfulPayments Int @default(0)
+  disputedPayments Int @default(0)
+  
+  lastUsedAt    DateTime? @map("last_used_at")
+
   archivedAt DateTime? @map("archived_at")
 
   isDefault      Boolean @default(false)

@@ -152,4 +152,123 @@ export const paymentMethodsRouter = router({
         return updatedMethod;
       });
     }),
+
+  getPaymentMethodStats: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const { id } = input;
+      const userId = ctx.session.user.id;
+
+      const paymentMethod = await ctx.prisma.paymentMethod.findFirst({
+        where: {
+          id,
+          userId,
+          archivedAt: null,
+        },
+        select: {
+          id: true,
+          type: true,
+          failedPayments: true,
+          successfulPayments: true,
+          disputedPayments: true,
+          lastUsedAt: true,
+          createdAt: true,
+        },
+      });
+
+      if (!paymentMethod) {
+        throw new Error(
+          "Payment method not found or doesn't belong to the user"
+        );
+      }
+
+      const totalPayments =
+        paymentMethod.failedPayments +
+        paymentMethod.successfulPayments +
+        paymentMethod.disputedPayments;
+      const successRate =
+        totalPayments > 0
+          ? (paymentMethod.successfulPayments / totalPayments) * 100
+          : 0;
+
+      return {
+        ...paymentMethod,
+        totalPayments,
+        successRate: Math.round(successRate * 100) / 100, // Round to 2 decimal places
+      };
+    }),
+
+  recalculateStats: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id } = input;
+      const userId = ctx.session.user.id;
+
+      // Verify payment method belongs to user
+      const paymentMethod = await ctx.prisma.paymentMethod.findFirst({
+        where: {
+          id,
+          userId,
+          archivedAt: null,
+        },
+      });
+
+      if (!paymentMethod) {
+        throw new Error(
+          "Payment method not found or doesn't belong to the user"
+        );
+      }
+
+      // Get payment counts by status
+      const [successfulCount, failedCount, disputedCount] = await Promise.all([
+        ctx.prisma.payment.count({
+          where: {
+            paymentMethodId: id,
+            status: "completed",
+          },
+        }),
+        ctx.prisma.payment.count({
+          where: {
+            paymentMethodId: id,
+            status: { in: ["failed", "cancelled"] },
+          },
+        }),
+        ctx.prisma.payment.count({
+          where: {
+            paymentMethodId: id,
+            status: {
+              in: ["disputed", "disputed_accepted", "disputed_rejected"],
+            },
+          },
+        }),
+      ]);
+
+      // Get last used date
+      const lastPayment = await ctx.prisma.payment.findFirst({
+        where: { paymentMethodId: id },
+        orderBy: { date: "desc" },
+        select: { date: true },
+      });
+
+      // Update payment method with recalculated stats
+      const updatedMethod = await ctx.prisma.paymentMethod.update({
+        where: { id },
+        data: {
+          successfulPayments: successfulCount,
+          failedPayments: failedCount,
+          disputedPayments: disputedCount,
+          lastUsedAt: lastPayment?.date || null,
+        },
+      });
+
+      return updatedMethod;
+    }),
 });

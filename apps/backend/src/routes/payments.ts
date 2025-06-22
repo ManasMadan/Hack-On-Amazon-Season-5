@@ -54,44 +54,55 @@ export const paymentsRouter = router({
         });
       }
 
-      // Create the payment
-      const payment = await ctx.prisma.payment.create({
-        data: {
-          fromUserId,
-          toUserId,
-          paymentMethodId,
-          amount,
-          description,
-          status: PaymentStatus.pending,
-        },
-        include: {
-          to: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
+      // Create the payment and update payment method stats in a transaction
+      const result = await ctx.prisma.$transaction(async (prisma) => {
+        // Create the payment
+        const payment = await prisma.payment.create({
+          data: {
+            fromUserId,
+            toUserId,
+            paymentMethodId,
+            amount,
+            description,
+            status: PaymentStatus.pending,
+          },
+          include: {
+            to: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            paymentMethod: {
+              select: {
+                id: true,
+                type: true,
+              },
             },
           },
-          paymentMethod: {
-            select: {
-              id: true,
-              type: true,
-            },
+        });
+
+        // Update payment method lastUsedAt
+        await prisma.paymentMethod.update({
+          where: { id: paymentMethodId },
+          data: { lastUsedAt: new Date() },
+        });
+
+        // Create initial timeline entry
+        await prisma.paymentTimeline.create({
+          data: {
+            paymentId: payment.id,
+            status: PaymentStatus.pending,
+            description: "Payment created",
+            notes: "Payment has been initiated",
           },
-        },
+        });
+
+        return payment;
       });
 
-      // Create initial timeline entry
-      await ctx.prisma.paymentTimeline.create({
-        data: {
-          paymentId: payment.id,
-          status: PaymentStatus.pending,
-          description: "Payment created",
-          notes: "Payment has been initiated",
-        },
-      });
-
-      return payment;
+      return result;
     }),
 
   listSentPayments: protectedProcedure
@@ -329,6 +340,7 @@ export const paymentsRouter = router({
           fromUserId: true,
           toUserId: true,
           status: true,
+          paymentMethodId: true,
         },
       });
 
@@ -408,6 +420,61 @@ export const paymentsRouter = router({
             },
           },
         });
+
+        // Update payment method statistics based on status change
+        const paymentMethodId = existingPayment.paymentMethodId;
+        const previousStatus = existingPayment.status;
+
+        // Define which statuses count as what type
+        const successStatuses: PaymentStatus[] = [PaymentStatus.completed];
+        const failureStatuses: PaymentStatus[] = [
+          PaymentStatus.failed,
+          PaymentStatus.cancelled,
+        ];
+        const disputeStatuses: PaymentStatus[] = [
+          PaymentStatus.disputed,
+          PaymentStatus.disputed_accepted,
+          PaymentStatus.disputed_rejected,
+        ];
+
+        // Prepare increment/decrement operations
+        let successfulIncrement = 0;
+        let failedIncrement = 0;
+        let disputedIncrement = 0;
+
+        // Handle transitions from previous status (decrement if needed)
+        if (successStatuses.includes(previousStatus)) {
+          successfulIncrement -= 1;
+        } else if (failureStatuses.includes(previousStatus)) {
+          failedIncrement -= 1;
+        } else if (disputeStatuses.includes(previousStatus)) {
+          disputedIncrement -= 1;
+        }
+
+        // Handle transitions to new status (increment if needed)
+        if (successStatuses.includes(status)) {
+          successfulIncrement += 1;
+        } else if (failureStatuses.includes(status)) {
+          failedIncrement += 1;
+        } else if (disputeStatuses.includes(status)) {
+          disputedIncrement += 1;
+        }
+
+        // Update payment method stats if there are changes
+        if (
+          successfulIncrement !== 0 ||
+          failedIncrement !== 0 ||
+          disputedIncrement !== 0
+        ) {
+          await prisma.paymentMethod.update({
+            where: { id: paymentMethodId },
+            data: {
+              successfulPayments: { increment: successfulIncrement },
+              failedPayments: { increment: failedIncrement },
+              disputedPayments: { increment: disputedIncrement },
+            },
+          });
+        }
 
         // Create timeline entry for status change
         const statusDescriptions = {
