@@ -142,6 +142,8 @@ model Payment {
   to              User           @relation("PaymentsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
   paymentMethod   PaymentMethod  @relation(fields: [paymentMethodId], references: [id])
   timeline        PaymentTimeline[]
+  evidences       Evidence[]
+  vote       Vote[]
 }
 
 model PaymentTimeline {
@@ -155,4 +157,48 @@ model PaymentTimeline {
   payment     Payment        @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
   @@map("payment_timeline")
+}
+
+enum EvidenceType {
+  voice_auth_score
+  transaction_metadata
+  geo_location
+  user_statement
+
+  bank_sms_alert
+  bank_statement
+  otp_verification_log // otp entered by user before correct otp
+
+  payment_gateway_metadata
+  risk_engine_flag        // Fraud detection engine flag (e.g., rules hit)
+
+  // System-generated
+  ip_address
+  device_fingerprint
+  past_payee_relationship
+  user_dispute_history
+  payment_method_risk_score
+}
+
+model Evidence {
+  id         String   @id @default(uuid())
+  paymentId  String
+  ipfsHash   String
+  type       EvidenceType 
+  createdAt  DateTime @default(now())
+
+  payment    Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+}
+
+model Vote {
+  id         String   @id @default(uuid())
+  paymentId  String
+  nodeId     String
+  isFraud    Boolean
+  justification String?
+  createdAt  DateTime @default(now())
+
+  payment    Payment  @relation(fields: [paymentId], references: [id])
+  @@unique([paymentId, nodeId])
 }
