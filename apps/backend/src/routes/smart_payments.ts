@@ -24,7 +24,7 @@ const AI_PROB_RATIO = 1 - SUCCESS_RATE_RATIO;
 export const smartPaymentRouter = router({
   getSmartPaymentMethod: protectedProcedure.query(async ({ ctx }) => {
     const aiServiceUrl =
-      process.env.SMART_ROUTING_API || "http://localhost:5000";
+      process.env.SMART_ROUTING_API || "http://localhost:5001";
     const userId = ctx.session.user.id;
 
     try {

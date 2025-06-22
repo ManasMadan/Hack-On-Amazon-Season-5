@@ -13,7 +13,8 @@ RUN apt-get update && \
     gcc \
     g++ \
     libsndfile1 \
-    tzdata && \
+    tzdata \
+    libgomp1 && \
     pip install --no-cache-dir -r requirements.txt && \
     apt-get remove -y gcc g++ && \
     apt-get autoremove -y && \
@@ -28,8 +29,8 @@ COPY main.py .
 # Create directory for persistent storage
 RUN mkdir -p /app/data/models
 
-# Expose port 5001
-EXPOSE 5001
+# Expose port 5002
+EXPOSE 5002
 
 # Run the FastAPI app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5001"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5002"]
