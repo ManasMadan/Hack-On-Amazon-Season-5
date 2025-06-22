@@ -24,7 +24,7 @@ feature_columns = [
     'payment_method_debit_card', 'payment_method_upi_id'
 ]
 
-@app.route('/best_payment', methods=['POST'])
+@app.route('/', methods=['POST'])
 def best_payment():
     """Predict the best payment method based on timestamp."""
     try:
