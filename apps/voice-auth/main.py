@@ -158,16 +158,16 @@ def authenticate_user(user: UserAuthenticate):
     # Extract embeddings
     with torch.no_grad():
         outputs = wav2vec2_model(audio, output_hidden_states=True)
-        current_embedding = outputs.hidden_states[-1].mean(dim=1).numpy().flatten().reshape(1, -1)
+        current_embedding = outputs.hidden_states[-1].mean(dim=1).detach().numpy().flatten().reshape(1, -1)
     
     # Compare with stored embeddings using cosine similarity
-    max_similarity = 0
+    max_similarity = 0.0
     for stored_embedding, _ in users_data[user.user_id]:
         stored_embedding = np.array(stored_embedding).flatten().reshape(1, -1)
-        similarity = cosine_similarity(current_embedding, stored_embedding)[0][0]
+        similarity = float(cosine_similarity(current_embedding, stored_embedding)[0][0])
         max_similarity = max(max_similarity, similarity)
     
-    is_authenticated = max_similarity >= SIMILARITY_THRESHOLD
+    is_authenticated = bool(max_similarity >= SIMILARITY_THRESHOLD)
 
     return {"authenticated": is_authenticated, 
             "similarity_score": float(max_similarity),
