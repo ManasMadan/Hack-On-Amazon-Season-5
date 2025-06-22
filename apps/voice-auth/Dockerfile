@@ -9,9 +9,14 @@ COPY requirements.txt .
 
 # Install system dependencies and Python packages
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc tzdata && \
+    apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    libsndfile1 \
+    tzdata \
+    libgomp1 && \
     pip install --no-cache-dir -r requirements.txt && \
-    apt-get remove -y gcc && \
+    apt-get remove -y gcc g++ && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
@@ -20,10 +25,12 @@ RUN apt-get update && \
 
 # Copy application file
 COPY main.py .
-COPY payment_model.pkl .
 
-# Expose port 5001
-EXPOSE 5001
+# Create directory for persistent storage
+RUN mkdir -p /app/data/models
 
-# Run the Flask app
-CMD ["python", "main.py"]
+# Expose port 3533
+EXPOSE 3533
+
+# Run the FastAPI app
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3533"]

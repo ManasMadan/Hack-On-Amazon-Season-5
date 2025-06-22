@@ -44,3 +44,16 @@ services:
       - "5001:5001"
     volumes:
       - ./data:/app/data:ro
+
+  voice-auth-server:
+    build:
+      context: ./apps/voice-auth
+      dockerfile: Dockerfile
+    container_name: voice-auth-server
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "3533:3533"
+    volumes:
+      - ./data:/app/data
