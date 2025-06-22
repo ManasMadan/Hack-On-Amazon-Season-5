@@ -29,8 +29,8 @@ COPY main.py .
 # Create directory for persistent storage
 RUN mkdir -p /app/data/models
 
-# Expose port 5002
-EXPOSE 5002
+# Expose port 3533
+EXPOSE 3533
 
 # Run the FastAPI app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5002"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3533"]
