@@ -1,7 +1,82 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "@/trpc";
+import { router, protectedProcedure } from "../trpc/trpc";
 import { Prisma, PaymentStatus } from "@repo/database/types";
 import { TRPCError } from "@trpc/server";
+import {
+  connectToDisputeResolver,
+  getProviderAndSigner,
+} from "../utils/contractHelpers";
+
+// Helper function to get contract address
+const getContractAddress = () => {
+  const address = process.env.DISPUTE_RESOLVER_ADDRESS;
+  if (!address) {
+    console.warn(
+      "DISPUTE_RESOLVER_ADDRESS not set. Evidence submission will be skipped."
+    );
+    return null;
+  }
+  return address;
+};
+
+// Helper function to connect to contract
+const connectToContract = async () => {
+  const contractAddress = getContractAddress();
+  if (!contractAddress) return null;
+
+  try {
+    const { provider, signer } = getProviderAndSigner();
+    return await connectToDisputeResolver(contractAddress, provider, signer);
+  } catch (error) {
+    console.error("Failed to connect to contract:", error);
+    return null;
+  }
+};
+
+// Helper function to generate random IPFS hash (for demo purposes)
+const generateRandomIPFSHash = () => {
+  const chars =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "Qm"; // IPFS hashes typically start with Qm
+  for (let i = 0; i < 44; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
+// Helper function to submit evidence to blockchain
+const submitEvidenceToBlockchain = async (
+  paymentId: string,
+  ipfsHash: string
+) => {
+  try {
+    const contract = await connectToContract();
+    if (!contract) {
+      console.log(
+        "Contract not available, skipping blockchain evidence submission"
+      );
+      return null;
+    }
+
+    const tx = await contract.submitEvidence(paymentId, ipfsHash);
+    await tx.wait();
+
+    console.log("Evidence submitted to blockchain:", {
+      paymentId,
+      ipfsHash,
+      transactionHash: tx.hash,
+    });
+
+    return {
+      success: true,
+      transactionHash: tx.hash,
+      ipfsHash,
+    };
+  } catch (error) {
+    console.error("Failed to submit evidence to blockchain:", error);
+    return null;
+  }
+};
 
 export const paymentsRouter = router({
   create: protectedProcedure
@@ -102,7 +177,98 @@ export const paymentsRouter = router({
         return payment;
       });
 
-      return result;
+      // After payment creation, automatically submit evidence and complete payment
+      try {
+        // Generate random evidence hash
+        const evidenceHash = generateRandomIPFSHash();
+
+        console.log("Auto-submitting evidence for payment:", {
+          paymentId: result.id,
+          evidenceHash,
+        });
+
+        // Submit evidence to blockchain (if available)
+        const blockchainResult = await submitEvidenceToBlockchain(
+          result.id,
+          evidenceHash
+        );
+
+        // Update payment status to completed and add timeline entries
+        await ctx.prisma.$transaction(async (prisma) => {
+          // Add evidence timeline entry
+          await prisma.paymentTimeline.create({
+            data: {
+              paymentId: result.id,
+              status: PaymentStatus.pending,
+              description: "Evidence submitted",
+              notes: `Evidence hash: ${evidenceHash}${blockchainResult ? ` | Blockchain TX: ${blockchainResult.transactionHash}` : " | Blockchain submission skipped"}`,
+            },
+          });
+
+          // Update payment status to completed
+          await prisma.payment.update({
+            where: { id: result.id },
+            data: { status: PaymentStatus.completed },
+          });
+
+          // Add completion timeline entry
+          await prisma.paymentTimeline.create({
+            data: {
+              paymentId: result.id,
+              status: PaymentStatus.completed,
+              description: "Payment completed successfully",
+              notes:
+                "Payment automatically completed after evidence submission",
+            },
+          });
+
+          // Update payment method successful payments count
+          await prisma.paymentMethod.update({
+            where: { id: paymentMethodId },
+            data: {
+              successfulPayments: { increment: 1 },
+            },
+          });
+        });
+
+        console.log("Payment automatically completed:", {
+          paymentId: result.id,
+          evidenceHash,
+          blockchainTx: blockchainResult?.transactionHash,
+        });
+      } catch (evidenceError) {
+        console.error(
+          "Failed to auto-submit evidence or complete payment:",
+          evidenceError
+        );
+        // Payment was created successfully, but evidence submission failed
+        // We'll leave the payment in pending status
+      }
+
+      // Return the updated payment with completed status
+      const finalPayment = await ctx.prisma.payment.findUnique({
+        where: { id: result.id },
+        include: {
+          to: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          paymentMethod: {
+            select: {
+              id: true,
+              type: true,
+            },
+          },
+          timeline: {
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      });
+
+      return finalPayment || result;
     }),
 
   listSentPayments: protectedProcedure
