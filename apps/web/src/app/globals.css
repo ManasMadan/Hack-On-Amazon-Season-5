@@ -21,3 +21,29 @@
   --font-lemon-mocktail: "Lemon Mocktail", sans-serif;
   --font-star-avenue: "Star Avenue", sans-serif;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  .print\:shadow-none,
+  .print\:shadow-none * {
+    visibility: visible;
+  }
+  
+  .print\:shadow-none {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  .print\:border-none {
+    border: none !important;
+  }
+}
