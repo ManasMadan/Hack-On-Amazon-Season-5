@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Receipt, RefreshCw } from "lucide-react";
+import { ArrowLeft, Receipt, RefreshCw, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@repo/ui/button";
@@ -14,20 +14,40 @@ import { PaymentTimeline } from "@/components/payment/PaymentTimeline";
 import { PaymentMethodDetails } from "@/components/payment/PaymentMethodDetails";
 
 import { useTRPC } from "@/utils/trpc";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useCustomSession } from "@/hooks/useCustomSession";
 
 export default function PaymentDetailPage() {
   const searchParams = useSearchParams();
   const paymentId = searchParams.get("id");
-
+  const [isDisputing, setIsDisputing] = useState(false);
   const { data: session } = useCustomSession();
   const trpc = useTRPC();
 
-  const { data: payment, isLoading } = useQuery({
+  const { data: payment, isLoading, refetch } = useQuery({
     ...trpc.payments.getPayment.queryOptions({ id: paymentId || "" }),
     enabled: !!paymentId && !!session?.user?.id,
   });
+
+  // Fixed mutation following your pattern
+  const { mutateAsync: raiseDisputeAsync, isPending: isRaisingDispute } =
+    useMutation(trpc.payments.raiseDispute.mutationOptions());
+
+  // Replace the handleRaiseDispute function with this:
+  const handleRaiseDispute = async () => {
+    if (!payment?.id) return;
+
+    setIsDisputing(true);
+    try {
+      await raiseDisputeAsync({ id: payment.id });
+      // Refetch payment data to get updated status
+      await refetch();
+    } catch (error) {
+      console.error("Failed to raise dispute:", error);
+    } finally {
+      setIsDisputing(false);
+    }
+  };
 
   if (!session) {
     return (
@@ -113,6 +133,19 @@ export default function PaymentDetailPage() {
               Receipt
             </Link>
           </Button>
+          {(payment.status === "pending" ||
+            payment.status === "completed" ||
+            payment.status === "failed") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRaiseDispute}
+              disabled={isDisputing || isRaisingDispute}
+            >
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              {isDisputing || isRaisingDispute ? "Raising Dispute..." : "Raise Dispute"}
+            </Button>
+          )}
         </div>
       </div>
 
