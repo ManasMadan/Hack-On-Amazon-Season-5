@@ -22,7 +22,7 @@ app = FastAPI()
 
 # Initialize MinIO client using environment variables
 minio_client = Minio(
-    endpoint=f"{os.getenv('MINIO_HOST', 'localhost')}:{os.getenv('MINIO_PORT', '9000')}",
+    endpoint=f"{os.getenv('MINIO_ENDPOINT', 'localhost')}:{os.getenv('MINIO_PORT', '9000')}",
     access_key=os.getenv("MINIO_ROOT_USER"),
     secret_key=os.getenv("MINIO_ROOT_PASSWORD"),
     secure=os.getenv("MINIO_USE_SSL", "False").lower() == "true"
@@ -53,7 +53,7 @@ def save_users_data(data):
 def load_audio_from_minio(minio_path):
     """Load and process audio from MinIO."""
     try:
-        response = minio_client.get_object(os.getenv("MINIO_BUCKET_NAME", "profile-pictures"), minio_path)
+        response = minio_client.get_object(os.getenv("MINIO_VOICE_BUCKET_NAME", "profile-pictures"), minio_path)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
             tmp_file.write(response.read())
             temp_audio_path = tmp_file.name
