@@ -6,6 +6,7 @@ import { paymentsRouter } from "@/routes/payments";
 import { usersRouter } from "@/routes/users";
 import { Prisma } from "@repo/database/types";
 import { smartPaymentRouter } from "@/routes/smart_payments";
+import { voiceAuthRouter } from "@/routes/voice_auth";
 
 export const appRouter = router({
   auth: authRouter,
@@ -13,7 +14,8 @@ export const appRouter = router({
   paymentMethods: paymentMethodsRouter,
   payments: paymentsRouter,
   users: usersRouter,
-  smartPayment: smartPaymentRouter
+  smartPayment: smartPaymentRouter,
+  voiceAuth: voiceAuthRouter
 });
 
 export type AppRouter = typeof appRouter;
