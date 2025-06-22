@@ -38,7 +38,7 @@ export default function PaymentReceiptPage() {
   });
 
   const handlePrint = () => {
-    // TODO
+    window.print();
   };
 
   const handleDownload = () => {
