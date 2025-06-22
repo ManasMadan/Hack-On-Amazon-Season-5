@@ -150,6 +150,27 @@ def register_user(user: UserRegister):
 
     return {"message": "User registered successfully", "minio_path": user.minio_path}
 
+
+@app.delete("/user")
+def delete_user_sample(user: UserRegister):
+    """Delete a user's audio sample."""
+    # Update users data
+    users_data = load_users_data()
+    if user.user_id not in users_data:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Find and remove the sample with matching minio_path
+    users_data[user.user_id] = [(emb, path) for emb, path in users_data[user.user_id] 
+                               if path != user.minio_path]
+    save_users_data(users_data)
+
+    # Train and save GBM if samples remain
+    if users_data[user.user_id]:
+        train_gbm_for_user(user.user_id)
+
+    return {"message": "User sample deleted successfully", "minio_path": user.minio_path}
+
+
 @app.get("/user")
 def get_user_audio_samples(user_id: str):
     """Retrieve audio sample paths for a user."""
