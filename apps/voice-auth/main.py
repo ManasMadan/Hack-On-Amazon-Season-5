@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from minio import Minio
-from transformers import AutoModelForAudioClassification, Wav2Vec2ConformerForPreTraining, Wav2Vec2FeatureExtractor
+from transformers import Wav2Vec2ConformerForPreTraining
 import torch
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
@@ -27,8 +27,6 @@ minio_client = Minio(
 )
 
 # Initialize transformer models
-deepfake_model = AutoModelForAudioClassification.from_pretrained("MelodyMachine/Deepfake-audio-detection-V2")
-deepfake_processor = Wav2Vec2FeatureExtractor.from_pretrained("MelodyMachine/Deepfake-audio-detection-V2")
 wav2vec2_model = Wav2Vec2ConformerForPreTraining.from_pretrained("facebook/wav2vec2-conformer-rel-pos-large")
 
 # File for persistent storage
@@ -87,15 +85,6 @@ def register_user(user: UserRegister):
     """Register a new user with audio sample."""
     audio, sr = load_audio_from_minio(user.minio_path)
 
-    # Deepfake detection
-    inputs = deepfake_processor(audio.squeeze(0), sampling_rate=sr, return_tensors="pt")
-    with torch.no_grad():
-        outputs = deepfake_model(**inputs)
-        logits = outputs.logits
-        predicted_class = torch.argmax(logits, dim=1).item()
-    if predicted_class == 1:  # Assuming 1 is fake
-        raise HTTPException(status_code=400, detail="Audio is a deepfake")
-
     # Extract embeddings
     with torch.no_grad():
         outputs = wav2vec2_model(audio, output_hidden_states=True)
@@ -145,15 +134,6 @@ def authenticate_user(user: UserAuthenticate):
         raise HTTPException(status_code=400, detail="User not registered or no samples available")
 
     audio, sr = load_audio_from_minio(user.minio_path)
-
-    # # Deepfake detection
-    # inputs = deepfake_processor(audio.squeeze(0), sampling_rate=sr, return_tensors="pt")
-    # with torch.no_grad():
-    #     outputs = deepfake_model(**inputs)
-    #     logits = outputs.logits
-    #     predicted_class = torch.argmax(logits, dim=1).item()
-    # if predicted_class == 1:  # Assuming 1 is fake
-    #     return {"authenticated": False, "reason": "Audio is a deepfake", "minio_path": user.minio_path}
 
     # Extract embeddings
     with torch.no_grad():
