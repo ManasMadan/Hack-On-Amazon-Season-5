@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "amazon",
+      "name": "securevoice",
       "dependencies": {
         "@prisma/client": "latest",
       },

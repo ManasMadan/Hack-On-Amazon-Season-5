@@ -1,5 +1,5 @@
 {
-  "name": "amazon",
+  "name": "securevoice",
   "private": true,
   "type": "module",
   "prisma": {

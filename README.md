@@ -1,4 +1,4 @@
-# Amazon Hackathon 2025 - Smart Payment Optimization
+# securevoice+ - Smart Payment Optimization
 
 **Team Algo Allies**
 
