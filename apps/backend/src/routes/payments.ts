@@ -723,6 +723,175 @@ export const paymentsRouter = router({
       return result;
     }),
 
+  raiseDispute: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { id } = input;
+      const userId = ctx.session.user.id;
+
+      // First verify the payment exists and user has access
+      const existingPayment = await ctx.prisma.payment.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          fromUserId: true,
+          toUserId: true,
+          status: true,
+          paymentMethodId: true,
+          amount: true,
+        },
+      });
+
+      if (!existingPayment) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Payment not found",
+        });
+      }
+
+      // Only sender or receiver can raise dispute
+      if (
+        existingPayment.fromUserId !== userId &&
+        existingPayment.toUserId !== userId
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You don't have permission to dispute this payment",
+        });
+      }
+
+      // Check if payment status allows dispute
+      const allowedStatuses: PaymentStatus[] = [
+        PaymentStatus.pending,
+        PaymentStatus.completed,
+        PaymentStatus.failed,
+      ];
+
+      if (!allowedStatuses.includes(existingPayment.status)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot dispute payment with status ${existingPayment.status}`,
+        });
+      }
+
+      // Update payment status to disputed
+      await ctx.prisma.$transaction(async (prisma) => {
+        await prisma.payment.update({
+          where: { id },
+          data: { status: PaymentStatus.disputed },
+        });
+
+        // Create timeline entry for dispute
+        await prisma.paymentTimeline.create({
+          data: {
+            paymentId: id,
+            status: PaymentStatus.disputed,
+            description: "Payment dispute raised",
+            notes: "User has raised a dispute for this payment",
+          },
+        });
+
+        // Update payment method disputed count
+        await prisma.paymentMethod.update({
+          where: { id: existingPayment.paymentMethodId },
+          data: {
+            disputedPayments: { increment: 1 },
+            // Decrement from previous status if needed
+            ...(existingPayment.status === PaymentStatus.completed && {
+              successfulPayments: { decrement: 1 },
+            }),
+            ...(existingPayment.status === PaymentStatus.failed && {
+              failedPayments: { decrement: 1 },
+            }),
+          },
+        });
+      });
+
+      // Simulate dispute resolution after 10 seconds
+      setTimeout(async () => {
+        try {
+          const isAccepted = Math.random() > 0.4; // 60% chance of acceptance
+          const newStatus = isAccepted
+            ? PaymentStatus.disputed_accepted
+            : PaymentStatus.disputed_rejected;
+
+          await ctx.prisma.$transaction(async (prisma) => {
+            // Update payment status
+            await prisma.payment.update({
+              where: { id },
+              data: { status: newStatus },
+            });
+
+            // Create timeline entry for dispute resolution
+            await prisma.paymentTimeline.create({
+              data: {
+                paymentId: id,
+                status: newStatus,
+                description: isAccepted
+                  ? "Dispute accepted"
+                  : "Dispute rejected",
+                notes: isAccepted
+                  ? "Dispute has been accepted. Refund will be processed."
+                  : "Dispute has been rejected after review.",
+              },
+            });
+
+            // If dispute is accepted, create refund payment
+            if (isAccepted) {
+              const refundPayment = await prisma.payment.create({
+                data: {
+                  fromUserId: existingPayment.toUserId, // Reverse the direction
+                  toUserId: existingPayment.fromUserId,
+                  paymentMethodId: existingPayment.paymentMethodId,
+                  amount: existingPayment.amount,
+                  description: `Refund for disputed payment ${id}`,
+                  status: PaymentStatus.completed,
+                },
+              });
+
+              // Create timeline for refund payment
+              await prisma.paymentTimeline.create({
+                data: {
+                  paymentId: refundPayment.id,
+                  status: PaymentStatus.completed,
+                  description: "Refund payment created",
+                  notes: `Refund for disputed payment ${id}`,
+                },
+              });
+
+              // Update original payment to refunded status
+              await prisma.payment.update({
+                where: { id },
+                data: { status: PaymentStatus.refunded },
+              });
+
+              // Create final timeline entry
+              await prisma.paymentTimeline.create({
+                data: {
+                  paymentId: id,
+                  status: PaymentStatus.refunded,
+                  description: "Payment refunded",
+                  notes: `Refund payment created: ${refundPayment.id}`,
+                },
+              });
+            }
+          });
+
+          console.log(
+            `Dispute ${isAccepted ? "accepted" : "rejected"} for payment ${id}`
+          );
+        } catch (error) {
+          console.error("Failed to resolve dispute:", error);
+        }
+      }, 10000); // 10 seconds
+
+      return { success: true, message: "Dispute raised successfully" };
+    }),
+
   getPaymentStats: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
 
