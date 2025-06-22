@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -12,9 +12,12 @@ import {
   DollarSign,
   Search,
   Check,
+  QrCode,
+  Scan,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import jsQR from "jsqr";
 
 import {
   Form,
@@ -42,6 +45,13 @@ import {
   SelectValue,
 } from "@repo/ui/select";
 import { Badge } from "@repo/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@repo/ui/dialog";
 
 import { useTRPC } from "@/utils/trpc";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -49,6 +59,7 @@ import { PaymentMethod } from "@repo/database/types";
 import { getPaymentMethodDisplayText } from "@/utils/paymentMethods";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "backend";
+
 // Form validation schema
 const findUserSchema = z
   .object({
@@ -85,8 +96,367 @@ type User = inferRouterOutputs<AppRouter>["users"]["findUserByEmailOrPhone"];
 export default function PayUser() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [step, setStep] = useState<"find" | "pay">("find");
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+
   const router = useRouter();
   const trpc = useTRPC();
+
+  const QRScanner = () => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [stream, setStream] = useState<MediaStream | null>(null);
+    const animationRef = useRef<number | null>(null);
+    const [cameraError, setCameraError] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const checkCameraPermission = async () => {
+      try {
+        // Check if mediaDevices is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          return false;
+        }
+
+        const permission = await navigator.permissions.query({
+          name: "camera" as PermissionName,
+        });
+        return permission.state !== "denied";
+      } catch (error) {
+        // Fallback - assume no camera available
+        return false;
+      }
+    };
+
+    const startCamera = async () => {
+      if (isScanning || stream) return; // Prevent multiple calls
+
+      try {
+        // Check if camera is available first
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const hasCamera = devices.some(
+          (device) => device.kind === "videoinput"
+        );
+
+        if (!hasCamera) {
+          setCameraError(true);
+          setIsScanning(false);
+          toast.error(
+            "No camera found on this device. Please upload a QR code image instead."
+          );
+          return;
+        }
+
+        // Check camera permission
+        const hasPermission = await checkCameraPermission();
+        if (!hasPermission) {
+          setCameraError(true);
+          setIsScanning(false);
+          toast.error(
+            "Camera permission denied. Please enable camera access or upload a QR code image."
+          );
+          return;
+        }
+
+        setIsScanning(true);
+        setCameraError(false);
+
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "environment",
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
+
+        setStream(mediaStream);
+
+        if (videoRef.current && mediaStream) {
+          videoRef.current.srcObject = mediaStream;
+          try {
+            await videoRef.current.play();
+            scanForQR();
+          } catch (playError) {
+            console.error("Video play error:", playError);
+            setCameraError(true);
+            setIsScanning(false);
+          }
+        }
+      } catch (error) {
+        console.error("Camera access error:", error);
+        setCameraError(true);
+        setIsScanning(false);
+        toast.error(
+          "Failed to access camera. Please check permissions or try uploading a QR code image."
+        );
+      }
+    };
+
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+
+          if (context) {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            context.drawImage(img, 0, 0);
+
+            const imageData = context.getImageData(
+              0,
+              0,
+              canvas.width,
+              canvas.height
+            );
+            const qrCode = jsQR(
+              imageData.data,
+              imageData.width,
+              imageData.height
+            );
+
+            if (qrCode) {
+              try {
+                const qrData = JSON.parse(qrCode.data);
+
+                if (qrData.userId && qrData.name && qrData.email) {
+                  setSelectedUser({
+                    id: qrData.userId,
+                    name: qrData.name,
+                    email: qrData.email,
+                    phoneNumber: qrData.phoneNumber || null,
+                    image: qrData.image || null,
+                  });
+
+                  if (qrData.amount) {
+                    paymentForm.setValue("amount", qrData.amount);
+                  }
+
+                  if (qrData.description) {
+                    paymentForm.setValue("description", qrData.description);
+                  }
+
+                  setStep("pay");
+                  setShowQRScanner(false);
+                  toast.success(`Found user: ${qrData.name}`);
+                  return;
+                }
+              } catch (error) {
+                console.error("Invalid QR code format:", error);
+                toast.error("Invalid QR code format");
+              }
+            } else {
+              toast.error("No QR code found in image");
+            }
+          }
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    const scanForQR = () => {
+      if (videoRef.current && canvasRef.current && isScanning) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const context = canvas.getContext("2d");
+
+        if (context && video.readyState === video.HAVE_ENOUGH_DATA) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          const imageData = context.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          );
+          const qrCode = jsQR(
+            imageData.data,
+            imageData.width,
+            imageData.height
+          );
+
+          if (qrCode) {
+            try {
+              const qrData = JSON.parse(qrCode.data);
+
+              // Validate QR data structure
+              if (qrData.userId && qrData.name && qrData.email) {
+                // Stop scanning immediately to prevent multiple detections
+                if (animationRef.current) {
+                  cancelAnimationFrame(animationRef.current);
+                  animationRef.current = null;
+                }
+
+                setSelectedUser({
+                  id: qrData.userId,
+                  name: qrData.name,
+                  email: qrData.email,
+                  phoneNumber: qrData.phoneNumber || null,
+                  image: qrData.image || null,
+                });
+
+                // If amount is specified in QR, set it
+                if (qrData.amount) {
+                  paymentForm.setValue("amount", qrData.amount);
+                }
+
+                // If description is specified in QR, set it
+                if (qrData.description) {
+                  paymentForm.setValue("description", qrData.description);
+                }
+
+                setStep("pay");
+                stopCamera();
+                toast.success(`Found user: ${qrData.name}`);
+                return;
+              }
+            } catch (error) {
+              console.error("Invalid QR code format:", error);
+            }
+          }
+        }
+
+        animationRef.current = requestAnimationFrame(scanForQR);
+      }
+    };
+
+    const stopCamera = () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+        setStream(null);
+      }
+
+      setIsScanning(false);
+      setCameraError(false);
+      setShowQRScanner(false);
+    };
+
+    useEffect(() => {
+      let mounted = true;
+
+      // Only try to start camera if explicitly requested and not already attempted
+      if (showQRScanner && !isScanning && !cameraError && !stream) {
+        // Don't auto-start camera - let user choose
+        setIsScanning(false);
+      }
+
+      return () => {
+        mounted = false;
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+          animationRef.current = null;
+        }
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+          setStream(null);
+        }
+        setIsScanning(false);
+      };
+    }, [showQRScanner]);
+
+    return (
+      <Dialog open={showQRScanner} onOpenChange={setShowQRScanner}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Scan QR Code</DialogTitle>
+            <DialogDescription>
+              Point your camera at the recipient's payment QR code
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center space-y-4">
+            <div className="relative w-full max-w-sm aspect-square bg-black rounded-lg overflow-hidden">
+              {!cameraError ? (
+                <video
+                  ref={videoRef}
+                  className="w-full h-full object-cover"
+                  playsInline
+                  muted
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white">
+                  <div className="text-center">
+                    <div className="text-red-400 mb-2">⚠️</div>
+                    <div className="text-sm">Error accessing camera</div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      Please check permissions or upload QR image
+                    </div>
+                  </div>
+                </div>
+              )}
+              <canvas ref={canvasRef} className="hidden" />
+
+              {/* QR Code viewfinder overlay */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-48 h-48 border-2 border-white rounded-lg relative">
+                  <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-blue-500 rounded-tl-lg"></div>
+                  <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-blue-500 rounded-tr-lg"></div>
+                  <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-blue-500 rounded-bl-lg"></div>
+                  <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-blue-500 rounded-br-lg"></div>
+                </div>
+              </div>
+
+              {isScanning && !cameraError && (
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                  <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+                    Scanning for QR code...
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Add hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" onClick={stopCamera} className="flex-1">
+                Cancel
+              </Button>
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                variant="outline"
+                className="flex-1"
+              >
+                Upload QR
+              </Button>
+              {!isScanning && !cameraError && (
+                <Button onClick={startCamera} className="flex-1">
+                  <Scan className="w-4 h-4 mr-2" />
+                  Start Camera
+                </Button>
+              )}
+              {cameraError && (
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Upload Instead
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
 
   // Find user form
   const findUserForm = useForm<z.infer<typeof findUserSchema>>({
@@ -268,18 +638,30 @@ export default function PayUser() {
                     Provide <strong>only one</strong> of the fields above.
                   </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isFindingUser}
-                  >
-                    {isFindingUser ? "Searching..." : "Find User"}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      className="flex-1"
+                      disabled={isFindingUser}
+                    >
+                      {isFindingUser ? "Searching..." : "Find User"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowQRScanner(true)}
+                      disabled={isFindingUser}
+                      className="px-3"
+                    >
+                      <QrCode className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </form>
             </Form>
           </CardContent>
         </Card>
+        <QRScanner />
       </div>
     );
   }
