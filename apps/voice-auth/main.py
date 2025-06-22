@@ -146,14 +146,14 @@ def authenticate_user(user: UserAuthenticate):
 
     audio, sr = load_audio_from_minio(user.minio_path)
 
-    # Deepfake detection
-    inputs = deepfake_processor(audio.squeeze(0), sampling_rate=sr, return_tensors="pt")
-    with torch.no_grad():
-        outputs = deepfake_model(**inputs)
-        logits = outputs.logits
-        predicted_class = torch.argmax(logits, dim=1).item()
-    if predicted_class == 1:  # Assuming 1 is fake
-        return {"authenticated": False, "reason": "Audio is a deepfake", "minio_path": user.minio_path}
+    # # Deepfake detection
+    # inputs = deepfake_processor(audio.squeeze(0), sampling_rate=sr, return_tensors="pt")
+    # with torch.no_grad():
+    #     outputs = deepfake_model(**inputs)
+    #     logits = outputs.logits
+    #     predicted_class = torch.argmax(logits, dim=1).item()
+    # if predicted_class == 1:  # Assuming 1 is fake
+    #     return {"authenticated": False, "reason": "Audio is a deepfake", "minio_path": user.minio_path}
 
     # Extract embeddings
     with torch.no_grad():
