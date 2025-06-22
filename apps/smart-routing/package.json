@@ -1,0 +1,8 @@
+{
+  "name": "smart-routing",
+  "version": "1.0.0",
+  "description": "Smart Payment Routing",
+  "scripts": {
+    "dev": "source .venv/bin/activate && python3 main.py"
+  }
+}
