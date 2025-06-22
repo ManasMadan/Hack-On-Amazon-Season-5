@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Blockchain Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .transactions-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: #333;
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #5a67d8;
+        }
+
+        .transactions-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .transactions-table th,
+        .transactions-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .transactions-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .transactions-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .hash {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #667eea;
+        }
+
+        .address {
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .contract-info {
+            background: #e8f5e8;
+            border: 1px solid #c3e6c3;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .contract-address {
+            font-family: monospace;
+            background: #f1f3f4;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+
+        .blocks-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .blocks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .block-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .block-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .block-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .block-detail {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 0.9rem;
+        }
+
+        .block-detail-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .block-detail-value {
+            font-family: monospace;
+            color: #333;
+        }
+
+        .block-hash {
+            color: #667eea;
+            word-break: break-all;
+            font-size: 0.8rem;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: 600;
+        }
+
+        .tab:hover {
+            color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .json-viewer {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .block-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background: #5a6268;
+        }
+
+        .action-btn.primary {
+            background: #667eea;
+        }
+
+        .action-btn.primary:hover {
+            background: #5a67d8;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 15px;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 Blockchain Explorer</h1>
+            <p>Local Hardhat Network</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="latest-block">-</div>
+                <div class="stat-label">Latest Block</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="chain-id">-</div>
+                <div class="stat-label">Chain ID</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="total-transactions">-</div>
+                <div class="stat-label">Total Transactions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="accounts-count">-</div>
+                <div class="stat-label">Accounts</div>
+            </div>
+        </div>
+
+        <div class="contract-info">
+            <h3>📜 Smart Contract</h3>
+            <p><strong>DisputeResolver Contract</strong></p>
+            <div class="contract-address" id="contract-address">0x5FbDB2315678afecb367f032d93F642f64180aa3</div>
+            <p>Status: <span class="status connected" id="contract-status">Deployed</span></p>
+        </div>
+
+        <div class="error" id="error-message"></div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('transactions')">📄 Transactions</button>
+            <button class="tab" onclick="switchTab('blocks')">🧱 Blocks</button>
+        </div>
+
+        <div id="transactions-tab" class="tab-content active">
+            <div class="transactions-section">
+                <div class="section-header">
+                    <h2 class="section-title">Recent Transactions</h2>
+                    <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+                </div>
+
+                <div id="loading" class="loading">Loading blockchain data...</div>
+                
+                <table class="transactions-table" id="transactions-table" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Block</th>
+                            <th>Hash</th>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Value (ETH)</th>
+                            <th>Gas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactions-body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="blocks-tab" class="tab-content">
+            <div class="blocks-section">
+                <div class="section-header">
+                    <h2 class="section-title">Recent Blocks</h2>
+                    <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+                </div>
+
+                <div id="blocks-loading" class="loading">Loading blocks data...</div>
+                
+                <div class="blocks-grid" id="blocks-grid" style="display: none;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for detailed block view -->
+    <div id="blockModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Block Details</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div id="modal-body">
+                <!-- Block details will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const RPC_URL = 'http://localhost:8545';
+        const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+
+        async function rpcCall(method, params = []) {
+            try {
+                const response = await fetch(RPC_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        method: method,
+                        params: params,
+                        id: Math.floor(Math.random() * 1000)
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+                
+                return data.result;
+            } catch (error) {
+                console.error(`RPC call failed for ${method}:`, error);
+                throw error;
+            }
+        }
+
+        function formatAddress(address) {
+            if (!address || address === '0x' || address === null) {
+                return 'Contract Creation';
+            }
+            return `${address.substring(0, 8)}...${address.substring(address.length - 6)}`;
+        }
+
+        function formatHash(hash) {
+            if (!hash) return 'N/A';
+            return `${hash.substring(0, 10)}...${hash.substring(hash.length - 8)}`;
+        }
+
+        function formatValue(value) {
+            if (!value || value === '0x0') return '0.0';
+            const ethValue = parseInt(value, 16) / 1e18;
+            return ethValue.toFixed(4);
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(parseInt(timestamp, 16) * 1000);
+            return date.toLocaleString();
+        }
+
+        function formatGas(gas) {
+            if (!gas) return 'N/A';
+            return parseInt(gas, 16).toLocaleString();
+        }
+
+        function switchTab(tabName) {
+            // Remove active class from all tabs and content
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Add active class to selected tab and content
+            event.target.classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            
+            // Load data if switching to blocks tab
+            if (tabName === 'blocks') {
+                loadBlocksData();
+            }
+        }
+
+        async function loadBlockchainStats() {
+            try {
+                // Get latest block number
+                const latestBlockHex = await rpcCall('eth_blockNumber');
+                const latestBlock = parseInt(latestBlockHex, 16);
+                document.getElementById('latest-block').textContent = latestBlock;
+
+                // Get chain ID
+                const chainIdHex = await rpcCall('eth_chainId');
+                const chainId = parseInt(chainIdHex, 16);
+                document.getElementById('chain-id').textContent = chainId;
+
+                // Get accounts
+                const accounts = await rpcCall('eth_accounts');
+                document.getElementById('accounts-count').textContent = accounts.length;
+
+                return latestBlock;
+            } catch (error) {
+                console.error('Error loading blockchain stats:', error);
+                throw error;
+            }
+        }
+
+        async function loadTransactions(latestBlock) {
+            const transactions = [];
+            let totalTxCount = 0;
+
+            try {
+                // Check last 10 blocks for transactions
+                const blocksToCheck = Math.min(10, latestBlock + 1);
+                
+                for (let i = 0; i < blocksToCheck; i++) {
+                    const blockNumber = latestBlock - i;
+                    if (blockNumber < 0) break;
+
+                    try {
+                        const blockHex = `0x${blockNumber.toString(16)}`;
+                        const block = await rpcCall('eth_getBlockByNumber', [blockHex, true]);
+                        
+                        if (block && block.transactions) {
+                            totalTxCount += block.transactions.length;
+                            
+                            block.transactions.forEach(tx => {
+                                transactions.push({
+                                    blockNumber: blockNumber,
+                                    hash: tx.hash,
+                                    from: tx.from,
+                                    to: tx.to,
+                                    value: tx.value,
+                                    gas: tx.gas ? parseInt(tx.gas, 16) : 0,
+                                    gasPrice: tx.gasPrice ? parseInt(tx.gasPrice, 16) : 0
+                                });
+                            });
+                        }
+                    } catch (blockError) {
+                        console.warn(`Could not fetch block ${blockNumber}:`, blockError);
+                    }
+                }
+
+                document.getElementById('total-transactions').textContent = totalTxCount;
+                displayTransactions(transactions.slice(0, 20));
+                
+            } catch (error) {
+                console.error('Error loading transactions:', error);
+                throw error;
+            }
+        }
+
+        function displayTransactions(transactions) {
+            const tbody = document.getElementById('transactions-body');
+            tbody.innerHTML = '';
+
+            if (transactions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666;">No transactions found</td></tr>';
+            } else {
+                transactions.forEach(tx => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${tx.blockNumber}</td>
+                        <td><span class="hash">${formatHash(tx.hash)}</span></td>
+                        <td><span class="address">${formatAddress(tx.from)}</span></td>
+                        <td><span class="address">${formatAddress(tx.to)}</span></td>
+                        <td>${formatValue(tx.value)}</td>
+                        <td>${tx.gas.toLocaleString()}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('transactions-table').style.display = 'table';
+        }
+
+        async function loadBlocksData() {
+            try {
+                document.getElementById('blocks-loading').style.display = 'block';
+                document.getElementById('blocks-grid').style.display = 'none';
+
+                const latestBlockHex = await rpcCall('eth_blockNumber');
+                const latestBlock = parseInt(latestBlockHex, 16);
+                
+                const blocks = [];
+                const blocksToShow = Math.min(12, latestBlock + 1);
+                
+                for (let i = 0; i < blocksToShow; i++) {
+                    const blockNumber = latestBlock - i;
+                    if (blockNumber < 0) break;
+
+                    try {
+                        const blockHex = `0x${blockNumber.toString(16)}`;
+                        const blockData = await rpcCall('eth_getBlockByNumber', [blockHex, true]); // true to get full transaction data
+                        
+                        if (blockData) {
+                            blocks.push({
+                                number: blockNumber,
+                                rawData: blockData, // Store the complete raw JSON data
+                                hash: blockData.hash,
+                                parentHash: blockData.parentHash,
+                                timestamp: blockData.timestamp,
+                                gasUsed: blockData.gasUsed,
+                                gasLimit: blockData.gasLimit,
+                                difficulty: blockData.difficulty,
+                                totalDifficulty: blockData.totalDifficulty,
+                                size: blockData.size,
+                                transactionCount: blockData.transactions ? blockData.transactions.length : 0,
+                                miner: blockData.miner,
+                                nonce: blockData.nonce,
+                                extraData: blockData.extraData,
+                                logsBloom: blockData.logsBloom,
+                                receiptsRoot: blockData.receiptsRoot,
+                                stateRoot: blockData.stateRoot,
+                                transactionsRoot: blockData.transactionsRoot,
+                                sha3Uncles: blockData.sha3Uncles,
+                                uncles: blockData.uncles
+                            });
+                        }
+                    } catch (blockError) {
+                        console.warn(`Could not fetch block ${blockNumber}:`, blockError);
+                    }
+                }
+
+                displayBlocks(blocks);
+                
+            } catch (error) {
+                console.error('Error loading blocks:', error);
+                document.getElementById('blocks-loading').innerHTML = `Error loading blocks: ${error.message}`;
+            }
+        }
+
+        function displayBlocks(blocks) {
+            const grid = document.getElementById('blocks-grid');
+            grid.innerHTML = '';
+
+            if (blocks.length === 0) {
+                grid.innerHTML = '<p style="text-align: center; color: #666;">No blocks found</p>';
+            } else {
+                blocks.forEach(block => {
+                    const blockCard = document.createElement('div');
+                    blockCard.className = 'block-card';
+                    blockCard.innerHTML = `
+                        <div class="block-number">Block #${block.number}</div>
+                        <div class="block-detail">
+                            <span class="block-detail-label">Hash:</span>
+                        </div>
+                        <div class="block-hash">${formatHash(block.hash)}</div>
+                        <div class="block-detail">
+                            <span class="block-detail-label">Timestamp:</span>
+                            <span class="block-detail-value">${formatTimestamp(block.timestamp)}</span>
+                        </div>
+                        <div class="block-detail">
+                            <span class="block-detail-label">Transactions:</span>
+                            <span class="block-detail-value">${block.transactionCount}</span>
+                        </div>
+                        <div class="block-detail">
+                            <span class="block-detail-label">Gas Used:</span>
+                            <span class="block-detail-value">${formatGas(block.gasUsed)}</span>
+                        </div>
+                        <div class="block-detail">
+                            <span class="block-detail-label">Gas Limit:</span>
+                            <span class="block-detail-value">${formatGas(block.gasLimit)}</span>
+                        </div>
+                        <div class="block-detail">
+                            <span class="block-detail-label">Size:</span>
+                            <span class="block-detail-value">${block.size ? parseInt(block.size, 16) + ' bytes' : 'N/A'}</span>
+                        </div>
+                        <div class="block-detail">
+                            <span class="block-detail-label">Miner:</span>
+                        </div>
+                        <div class="block-hash">${formatAddress(block.miner)}</div>
+                        <div class="block-actions">
+                            <button class="action-btn primary" onclick="showDetailedBlock(${block.number})">📄 View Details</button>
+                            <button class="action-btn" onclick="showBlockJSON(${block.number})">🔍 View JSON</button>
+                        </div>
+                    `;
+                    
+                    grid.appendChild(blockCard);
+                });
+            }
+
+            // Store blocks data globally for modal access
+            window.blocksData = blocks;
+
+            document.getElementById('blocks-loading').style.display = 'none';
+            document.getElementById('blocks-grid').style.display = 'grid';
+        }
+
+        function showDetailedBlock(blockNumber) {
+            const block = window.blocksData.find(b => b.number === blockNumber);
+            if (!block) return;
+
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            
+            modalTitle.textContent = `Block #${blockNumber} - Detailed View`;
+            
+            modalBody.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <h3>🏷️ Basic Information</h3>
+                        <div class="block-detail">
+                            <span class="block-detail-label">Block Number:</span>
+                            <span class="block-detail-value">${block.number}</span>
+                        </div>
+                        <div class="block-detail">
+                            <span class="block-detail-label">Timestamp:</span>
+                            <span class="block-detail-value">${formatTimestamp(block.timestamp)}</span>
+                        </div>
+                        <div class="block-detail">
+                            <span class="block-detail-label">Transactions:</span>
+                            <span class="block-detail-value">${block.transactionCount}</span>
+                        </div>
+                        <div class="block-detail">
+                            <span class="block-detail-label">Size:</span>
+                            <span class="block-detail-value">${block.size ? parseInt(block.size, 16) + ' bytes' : 'N/A'}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h3>⛽ Gas Information</h3>
+                        <div class="block-detail">
+                            <span class="block-detail-label">Gas Used:</span>
+                            <span class="block-detail-value">${formatGas(block.gasUsed)}</span>
+                        </div>
+                        <div class="block-detail">
+                            <span class="block-detail-label">Gas Limit:</span>
+                            <span class="block-detail-value">${formatGas(block.gasLimit)}</span>
+                        </div>
+                        <div class="block-detail">
+                            <span class="block-detail-label">Gas Utilization:</span>
+                            <span class="block-detail-value">${block.gasUsed && block.gasLimit ? ((parseInt(block.gasUsed, 16) / parseInt(block.gasLimit, 16)) * 100).toFixed(2) + '%' : 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <h3>🔑 Hashes & Identifiers</h3>
+                <div style="margin: 15px 0;">
+                    <div class="block-detail">
+                        <span class="block-detail-label">Block Hash:</span>
+                    </div>
+                    <div class="json-viewer" style="margin: 5px 0;">${block.hash}</div>
+                    
+                    <div class="block-detail">
+                        <span class="block-detail-label">Parent Hash:</span>
+                    </div>
+                    <div class="json-viewer" style="margin: 5px 0;">${block.parentHash}</div>
+                    
+                    <div class="block-detail">
+                        <span class="block-detail-label">State Root:</span>
+                    </div>
+                    <div class="json-viewer" style="margin: 5px 0;">${block.stateRoot || 'N/A'}</div>
+                    
+                    <div class="block-detail">
+                        <span class="block-detail-label">Transactions Root:</span>
+                    </div>
+                    <div class="json-viewer" style="margin: 5px 0;">${block.transactionsRoot || 'N/A'}</div>
+                    
+                    <div class="block-detail">
+                        <span class="block-detail-label">Receipts Root:</span>
+                    </div>
+                    <div class="json-viewer" style="margin: 5px 0;">${block.receiptsRoot || 'N/A'}</div>
+                </div>
+                
+                <h3>⛏️ Mining Information</h3>
+                <div style="margin: 15px 0;">
+                    <div class="block-detail">
+                        <span class="block-detail-label">Miner:</span>
+                    </div>
+                    <div class="json-viewer" style="margin: 5px 0;">${block.miner}</div>
+                    
+                    <div class="block-detail">
+                        <span class="block-detail-label">Difficulty:</span>
+                        <span class="block-detail-value">${block.difficulty ? parseInt(block.difficulty, 16).toLocaleString() : 'N/A'}</span>
+                    </div>
+                    <div class="block-detail">
+                        <span class="block-detail-label">Total Difficulty:</span>
+                        <span class="block-detail-value">${block.totalDifficulty ? parseInt(block.totalDifficulty, 16).toLocaleString() : 'N/A'}</span>
+                    </div>
+                    <div class="block-detail">
+                        <span class="block-detail-label">Nonce:</span>
+                        <span class="block-detail-value">${block.nonce}</span>
+                    </div>
+                </div>
+                
+                ${block.rawData.transactions && block.rawData.transactions.length > 0 ? `
+                <h3>💸 Transactions (${block.rawData.transactions.length})</h3>
+                <div style="margin: 15px 0;">
+                    ${block.rawData.transactions.slice(0, 5).map((tx, index) => `
+                        <div style="border: 1px solid #eee; padding: 10px; margin: 10px 0; border-radius: 5px;">
+                            <strong>Transaction ${index + 1}:</strong><br>
+                            <span style="font-family: monospace; font-size: 0.8rem;">${tx.hash}</span><br>
+                            <small>From: ${formatAddress(tx.from)} → To: ${formatAddress(tx.to)} | Value: ${formatValue(tx.value)} ETH</small>
+                        </div>
+                    `).join('')}
+                    ${block.rawData.transactions.length > 5 ? `<p><em>... and ${block.rawData.transactions.length - 5} more transactions</em></p>` : ''}
+                </div>
+                ` : '<h3>💸 No Transactions</h3>'}
+                
+                <div class="block-actions">
+                    <button class="action-btn primary" onclick="showBlockJSON(${blockNumber})">🔍 View Complete JSON Data</button>
+                </div>
+            `;
+            
+            document.getElementById('blockModal').style.display = 'block';
+        }
+
+        function showBlockJSON(blockNumber) {
+            const block = window.blocksData.find(b => b.number === blockNumber);
+            if (!block) return;
+
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            
+            modalTitle.textContent = `Block #${blockNumber} - Complete JSON Data`;
+            
+            modalBody.innerHTML = `
+                <h3>📋 Raw Block Data (as stored on blockchain)</h3>
+                <p>This is the complete JSON data structure for this block as returned by the Ethereum RPC API:</p>
+                <div class="json-viewer">${JSON.stringify(block.rawData, null, 2)}</div>
+                
+                <div class="block-actions">
+                    <button class="action-btn" onclick="copyToClipboard('${btoa(JSON.stringify(block.rawData, null, 2))}')">📋 Copy JSON</button>
+                    <button class="action-btn primary" onclick="showDetailedBlock(${blockNumber})">← Back to Details</button>
+                </div>
+            `;
+            
+            document.getElementById('blockModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('blockModal').style.display = 'none';
+        }
+
+        function copyToClipboard(base64Data) {
+            const jsonData = atob(base64Data);
+            navigator.clipboard.writeText(jsonData).then(() => {
+                alert('JSON data copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert('Failed to copy to clipboard');
+            });
+        }
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('blockModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function showBlockDetails(block) {
+            showDetailedBlock(block.number);
+        }
+
+        async function refreshData() {
+            try {
+                document.getElementById('error-message').style.display = 'none';
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('transactions-table').style.display = 'none';
+
+                const latestBlock = await loadBlockchainStats();
+                await loadTransactions(latestBlock);
+
+                // Update contract address display
+                document.getElementById('contract-address').textContent = CONTRACT_ADDRESS;
+                
+                // Also refresh blocks if that tab is active
+                if (document.getElementById('blocks-tab').classList.contains('active')) {
+                    await loadBlocksData();
+                }
+                
+            } catch (error) {
+                console.error('Error refreshing data:', error);
+                document.getElementById('error-message').textContent = `Error: ${error.message}`;
+                document.getElementById('error-message').style.display = 'block';
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        // Initial load
+        refreshData();
+
+        // Auto-refresh every 10 seconds
+        setInterval(refreshData, 10000);
+    </script>
+</body>
+</html>

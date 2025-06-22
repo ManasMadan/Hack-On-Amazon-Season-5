@@ -21,6 +21,7 @@
     "postinstall": "node scripts/setup-env-links.js"
   },
   "devDependencies": {
+    "hardhat": "^2.24.3",
     "prettier": "^3.5.3",
     "turbo": "^2.5.4",
     "typescript": "5.8.2"
