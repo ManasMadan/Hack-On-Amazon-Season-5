@@ -45,7 +45,7 @@ import { Badge } from "@repo/ui/badge";
 
 import { useTRPC } from "@/utils/trpc";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { PaymentMethod } from "@repo/database";
+import { PaymentMethod } from "@repo/database/types";
 import { getPaymentMethodDisplayText } from "@/utils/paymentMethods";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "backend";

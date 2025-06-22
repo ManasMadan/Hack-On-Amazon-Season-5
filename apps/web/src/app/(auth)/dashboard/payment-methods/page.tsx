@@ -40,7 +40,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@repo/ui/dropdown-menu";
-import { PaymentMethod, PaymentMethodType } from "@repo/database";
+import { PaymentMethod, PaymentMethodType } from "@repo/database/types";
 import Link from "next/link";
 import { getPaymentMethodDisplayText } from "@/utils/paymentMethods";
 

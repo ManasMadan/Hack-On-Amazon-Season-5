@@ -17,7 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/card";
-import { PaymentStatus } from "@repo/database";
+import { PaymentStatus } from "@repo/database/types";
 
 const statusIcons = {
   [PaymentStatus.pending]: Clock,

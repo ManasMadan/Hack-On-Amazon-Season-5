@@ -9,6 +9,11 @@
       "import": "./dist/client.js",
       "require": "./dist/client.js",
       "types": "./dist/client.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types.js",
+      "require": "./dist/types.js",
+      "types": "./dist/types.d.ts"
     }
   },
   "scripts": {

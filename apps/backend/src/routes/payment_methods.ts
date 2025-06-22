@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "@/trpc";
-import { Prisma, PaymentMethodType } from "@repo/database";
+import { Prisma, PaymentMethodType } from "@repo/database/types";
 
 export const paymentMethodsRouter = router({
   create: protectedProcedure

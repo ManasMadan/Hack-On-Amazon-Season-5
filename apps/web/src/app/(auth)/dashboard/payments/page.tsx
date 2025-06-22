@@ -26,7 +26,7 @@ import { useTRPC } from "@/utils/trpc";
 import { useQuery } from "@tanstack/react-query";
 import PaymentCard from "@/components/payment/PaymentCard";
 import { useCustomSession } from "@/hooks/useCustomSession";
-import { PaymentStatus } from "@repo/database";
+import { PaymentStatus } from "@repo/database/types";
 
 const statusOptions = [
   { value: "all", label: "All Payments" },

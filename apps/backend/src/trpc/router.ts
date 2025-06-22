@@ -4,7 +4,7 @@ import { avatarRouter } from "@/routes/avatar";
 import { paymentMethodsRouter } from "@/routes/payment_methods";
 import { paymentsRouter } from "@/routes/payments";
 import { usersRouter } from "@/routes/users";
-import { Prisma } from "@repo/database";
+import { Prisma } from "@repo/database/types";
 
 export const appRouter = router({
   auth: authRouter,

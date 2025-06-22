@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure } from "@/trpc";
-import { Prisma, PaymentStatus } from "@repo/database";
+import { Prisma, PaymentStatus } from "@repo/database/types";
 import { TRPCError } from "@trpc/server";
 
 export const paymentsRouter = router({

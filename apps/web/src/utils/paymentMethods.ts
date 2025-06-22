@@ -1,4 +1,4 @@
-import { PaymentMethodType } from "@repo/database";
+import { PaymentMethodType } from "@repo/database/types";
 
 export function getPaymentMethodDisplayText(method: {
   type: PaymentMethodType;
