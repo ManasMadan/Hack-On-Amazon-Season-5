@@ -53,7 +53,7 @@ def save_users_data(data):
 def load_audio_from_minio(minio_path):
     """Load and process audio from MinIO."""
     try:
-        response = minio_client.get_object(os.getenv("MINIO_VOICE_BUCKET_NAME", "profile-pictures"), minio_path)
+        response = minio_client.get_object(os.getenv("MINIO_VOICE_BUCKET_NAME", "voice-auth"), minio_path)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
             tmp_file.write(response.read())
             temp_audio_path = tmp_file.name
