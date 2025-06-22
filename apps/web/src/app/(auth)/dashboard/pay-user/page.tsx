@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from "@repo/ui/select";
 import { Badge } from "@repo/ui/badge";
+import { Switch } from "@repo/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -82,14 +83,29 @@ const findUserSchema = z
     }
   );
 
-const paymentSchema = z.object({
-  amount: z
-    .number({ invalid_type_error: "Amount must be a number" })
-    .positive("Amount must be positive")
-    .max(1000000, "Amount cannot exceed $1,000,000"),
-  paymentMethodId: z.string().uuid("Please select a payment method"),
-  description: z.string().max(500, "Description too long").optional(),
-});
+const paymentSchema = z
+  .object({
+    amount: z
+      .number({ invalid_type_error: "Amount must be a number" })
+      .positive("Amount must be positive")
+      .max(1000000, "Amount cannot exceed $1,000,000"),
+    paymentMethodId: z.string().uuid().optional(),
+    description: z.string().max(500, "Description too long").optional(),
+    bestPayment: z.boolean(),
+  })
+  .refine(
+    (data) => {
+      // If bestPayment is false, paymentMethodId is required
+      if (!data.bestPayment && !data.paymentMethodId) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Payment method is required when best payment is not selected",
+      path: ["paymentMethodId"],
+    }
+  );
 
 type User = inferRouterOutputs<AppRouter>["users"]["findUserByEmailOrPhone"];
 
@@ -474,6 +490,7 @@ export default function PayUser() {
       amount: 0,
       paymentMethodId: "",
       description: "",
+      bestPayment: false,
     },
   });
 
@@ -537,6 +554,7 @@ export default function PayUser() {
           amount: values.amount,
           paymentMethodId: values.paymentMethodId,
           description: values.description,
+          bestPayment: values.bestPayment,
         });
         router.push("/dashboard");
       },
@@ -767,55 +785,82 @@ export default function PayUser() {
                 )}
               />
 
-              {/* Payment Method Field */}
+              {/* Best Payment Toggle */}
               <FormField
                 control={paymentForm.control}
-                name="paymentMethodId"
+                name="bestPayment"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Payment Method</FormLabel>
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">
+                        Use Smart Payment
+                      </FormLabel>
+                      <div className="text-sm text-muted-foreground">
+                        Automatically select the best payment method for this
+                        transaction
+                      </div>
+                    </div>
                     <FormControl>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <SelectTrigger>
-                          <div className="flex items-center gap-2">
-                            <CreditCard className="h-4 w-4" />
-                            <SelectValue placeholder="Select payment method" />
-                          </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {paymentMethods?.map((method) => (
-                            <SelectItem key={method.id} value={method.id}>
-                              <div className="flex items-center justify-between w-full">
-                                <span>{getPaymentMethodDisplay(method)}</span>
-                                {method.isDefault && (
-                                  <Badge variant="secondary" className="ml-2">
-                                    Default
-                                  </Badge>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
                     </FormControl>
-                    <FormMessage />
-                    {paymentMethods?.length === 0 && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        No payment methods found.{" "}
-                        <Link
-                          href="/dashboard/payment-methods"
-                          className="text-primary underline"
-                        >
-                          Add one here
-                        </Link>
-                      </p>
-                    )}
                   </FormItem>
                 )}
               />
+
+              {/* Payment Method Field - Only show when bestPayment is false */}
+              {!paymentForm.watch("bestPayment") && (
+                <FormField
+                  control={paymentForm.control}
+                  name="paymentMethodId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Payment Method</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger>
+                            <div className="flex items-center gap-2">
+                              <CreditCard className="h-4 w-4" />
+                              <SelectValue placeholder="Select payment method" />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {paymentMethods?.map((method) => (
+                              <SelectItem key={method.id} value={method.id}>
+                                <div className="flex items-center justify-between w-full">
+                                  <span>{getPaymentMethodDisplay(method)}</span>
+                                  {method.isDefault && (
+                                    <Badge variant="secondary" className="ml-2">
+                                      Default
+                                    </Badge>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                      {paymentMethods?.length === 0 && (
+                        <p className="text-sm text-muted-foreground mt-2">
+                          No payment methods found.{" "}
+                          <Link
+                            href="/dashboard/payment-methods"
+                            className="text-primary underline"
+                          >
+                            Add one here
+                          </Link>
+                        </p>
+                      )}
+                    </FormItem>
+                  )}
+                />
+              )}
 
               {/* Description Field */}
               <FormField
@@ -852,7 +897,11 @@ export default function PayUser() {
                 <Button
                   type="submit"
                   className="flex-1"
-                  disabled={isCreatingPayment || !paymentMethods?.length}
+                  disabled={
+                    isCreatingPayment ||
+                    (!paymentForm.watch("bestPayment") &&
+                      !paymentMethods?.length)
+                  }
                 >
                   {isCreatingPayment
                     ? "Processing..."

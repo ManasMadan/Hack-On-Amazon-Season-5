@@ -6,6 +6,7 @@ import {
   connectToDisputeResolver,
   getProviderAndSigner,
 } from "../utils/contractHelpers";
+import { smartPaymentRouter } from "./smart_payments";
 
 // Helper function to get contract address
 const getContractAddress = () => {
@@ -81,15 +82,32 @@ const submitEvidenceToBlockchain = async (
 export const paymentsRouter = router({
   create: protectedProcedure
     .input(
-      z.object({
-        toUserId: z.string(),
-        paymentMethodId: z.string().uuid(),
-        amount: z.number().positive().max(1000000), // Max amount limit
-        description: z.string().max(500).optional(),
-      })
+      z
+        .object({
+          toUserId: z.string(),
+          paymentMethodId: z.string().uuid().optional(),
+          amount: z.number().positive().max(1000000), // Max amount limit
+          description: z.string().max(500).optional(),
+          bestPayment: z.boolean().default(false),
+        })
+        .refine(
+          (data) => {
+            // If bestPayment is false, paymentMethodId is required
+            if (!data.bestPayment && !data.paymentMethodId) {
+              return false;
+            }
+            return true;
+          },
+          {
+            message:
+              "Payment method is required when best payment is not selected",
+            path: ["paymentMethodId"],
+          }
+        )
     )
     .mutation(async ({ ctx, input }) => {
-      const { toUserId, paymentMethodId, amount, description } = input;
+      const { toUserId, amount, description, bestPayment } = input;
+      let { paymentMethodId } = input;
       const fromUserId = ctx.session.user.id;
 
       // Prevent self-payment
@@ -97,6 +115,42 @@ export const paymentsRouter = router({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Cannot send payment to yourself",
+        });
+      }
+
+      // If bestPayment is true, get the best payment method
+      if (bestPayment) {
+        try {
+          const smartPaymentInstance = smartPaymentRouter.createCaller({
+            session: ctx.session,
+            prisma: ctx.prisma,
+          });
+
+          const smartPaymentResult =
+            await smartPaymentInstance.getSmartPaymentMethod();
+
+          if (!smartPaymentResult.bestPaymentMethod) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "No suitable payment method found for smart payment",
+            });
+          }
+
+          paymentMethodId = smartPaymentResult.bestPaymentMethod.id;
+        } catch (error) {
+          console.error("Failed to get best payment method:", error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to determine best payment method",
+          });
+        }
+      }
+
+      // Ensure we have a payment method ID at this point
+      if (!paymentMethodId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Payment method ID is required",
         });
       }
 
