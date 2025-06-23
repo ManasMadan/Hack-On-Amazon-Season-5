@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from minio import Minio
-from transformers import Wav2Vec2ConformerForPreTraining, Wav2Vec2Processor
+from transformers import Wav2Vec2ConformerForPreTraining
 import torch
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
@@ -30,7 +30,6 @@ minio_client = Minio(
 
 # Initialize transformer models
 wav2vec2_model = Wav2Vec2ConformerForPreTraining.from_pretrained("facebook/wav2vec2-conformer-rel-pos-large")
-processor = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-conformer-rel-pos-large")
 
 # Initialize speech recognition
 recognizer = sr.Recognizer()
