@@ -117,4 +117,121 @@ export const smartPaymentRouter = router({
       throw new Error("Failed to calculate smart payment method ranking");
     }
   }),
+
+  // Mutation version for static exports
+  getBestPaymentMethod: protectedProcedure
+    .input(
+      z.object({
+        amount: z.number().positive().optional(),
+        recipientId: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const aiServiceUrl =
+        process.env.SMART_ROUTING_API || "http://localhost:5001";
+      const userId = ctx.session.user.id;
+
+      try {
+        // Fetch user's active payment methods with stats
+        const userPaymentMethods = await ctx.prisma.paymentMethod.findMany({
+          where: {
+            userId,
+            archivedAt: null,
+          },
+          orderBy: { createdAt: "desc" },
+        });
+
+        if (userPaymentMethods.length === 0) {
+          throw new Error("No payment methods found for user");
+        }
+
+        // Fetch AI predictions
+        let aiResponse: AIServiceResponse;
+        try {
+          const response = await fetch(aiServiceUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              amount: input.amount,
+              recipientId: input.recipientId,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(
+              `AI service responded with status: ${response.status}`
+            );
+          }
+
+          aiResponse = await response.json();
+        } catch (error) {
+          console.error("Error fetching AI predictions:", error);
+          // Fallback to equal probabilities if AI service fails
+          aiResponse = {
+            best_payment_method: "upi_id",
+            note: "AI service unavailable, using fallback scores",
+            probs: {
+              bank: 0.25,
+              credit_card: 0.25,
+              debit_card: 0.25,
+              upi_id: 0.25,
+            },
+            score: 0.25,
+            timestamp: new Date().toISOString(),
+          };
+        }
+
+        // Calculate final scores for each user payment method
+        const rankedPaymentMethods = userPaymentMethods
+          .map((paymentMethod) => {
+            // Calculate success rate from database
+            const totalPayments =
+              paymentMethod.successfulPayments +
+              paymentMethod.failedPayments +
+              paymentMethod.disputedPayments;
+
+            const successRate =
+              totalPayments > 0
+                ? paymentMethod.successfulPayments / totalPayments
+                : 0;
+
+            // Get AI probability for this payment method type
+            const aiProbability = aiResponse.probs[paymentMethod.type] || 0;
+
+            // Calculate final score: 40% success rate + 60% AI probability
+            const finalScore =
+              successRate * SUCCESS_RATE_RATIO + aiProbability * AI_PROB_RATIO;
+
+            return {
+              paymentMethod,
+              finalScore: Math.round(finalScore * 10000) / 100, // Convert to percentage with 2 decimals
+              successRate: Math.round(successRate * 10000) / 100,
+              aiProbability: Math.round(aiProbability * 10000) / 100,
+            };
+          })
+          // Sort by final score descending (best first)
+          .sort((a, b) => b.finalScore - a.finalScore);
+
+        const bestMethod = rankedPaymentMethods[0];
+        if (!bestMethod) {
+          throw new Error("No suitable payment method found");
+        }
+
+        return {
+          bestPaymentMethod: bestMethod.paymentMethod,
+          reasoning: {
+            finalScore: bestMethod.finalScore,
+            successRate: bestMethod.successRate,
+            aiProbability: bestMethod.aiProbability,
+            aiResponse: aiResponse.note,
+          },
+          allMethods: rankedPaymentMethods,
+        };
+      } catch (error) {
+        console.error("Error in smart payment method ranking:", error);
+        throw new Error("Failed to calculate smart payment method ranking");
+      }
+    }),
 });

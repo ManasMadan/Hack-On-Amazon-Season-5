@@ -39,6 +39,7 @@
     "ethers": "^6.14.4",
     "express": "^5.0.0",
     "minio": "^8.0.5",
+    "node-nlp": "^5.0.0-alpha.5",
     "superjson": "^2.2.2",
     "uuid": "^11.1.0",
     "zod": "^3.25.51"

@@ -29,6 +29,76 @@ import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/card";
 import { Separator } from "@repo/ui/separator";
 import { Avatar, AvatarFallback } from "@repo/ui/avatar";
 import { toast } from "sonner";
+import { PaymentMethodType } from "@repo/database/types";
+
+// Web Speech API types
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: SpeechRecognitionErrorEvent) => void;
+  onstart: () => void;
+  onend: () => void;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+interface SpeechRecognitionEvent {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionResultList {
+  [index: number]: SpeechRecognitionResult;
+  length: number;
+}
+
+interface SpeechRecognitionResult {
+  [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
+  length: number;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognitionErrorEvent {
+  error: string;
+  message?: string;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: {
+      new (): SpeechRecognition;
+    };
+    webkitSpeechRecognition: {
+      new (): SpeechRecognition;
+    };
+  }
+}
+
+function getDetails(type: PaymentMethodType, details: any): string {
+  switch (type) {
+    case "credit_card":
+    case "debit_card":
+      return details.last4;
+    case "bank":
+      if (details.accountNumber && details.accountNumber.length >= 4) {
+        const last4 = details.accountNumber.slice(-4);
+        return "****" + last4;
+      }
+      return "****";
+    case "upi_id":
+      return details.upiId;
+    default:
+      return "****";
+  }
+}
 
 const actionButtons = [
   {
@@ -99,11 +169,12 @@ export default function PaymentDashboard() {
     React.useState<PaymentDetails | null>(null);
   const [pinValue, setPinValue] = React.useState("");
   const [showPinInput, setShowPinInput] = React.useState(false);
-  const [isVoicePayment, setIsVoicePayment] = React.useState(false);
   const [isVoiceAuth, setIsVoiceAuth] = React.useState(false);
   const [needsVoiceAuth, setNeedsVoiceAuth] = React.useState(false);
+  const [speechSupported, setSpeechSupported] = React.useState(false);
 
   const chatEndRef = React.useRef<HTMLDivElement>(null);
+  const recognitionRef = React.useRef<SpeechRecognition | null>(null);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -112,6 +183,110 @@ export default function PaymentDashboard() {
   React.useEffect(() => {
     scrollToBottom();
   }, [chatMessages, isProcessingPayment, showPinInput]);
+
+  // Initialize speech recognition
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+        setSpeechSupported(true);
+        const recognition = new SpeechRecognition();
+
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = "en-US";
+
+        recognition.onstart = () => {
+          console.log("Speech recognition started");
+        };
+
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
+          if (event.results && event.results[0] && event.results[0][0]) {
+            const transcript = event.results[0][0].transcript;
+            console.log("Speech result:", transcript);
+
+            if (needsVoiceAuth) {
+              // Handle voice authentication - don't set chatMessage
+              setIsVoiceAuth(false);
+              setNeedsVoiceAuth(false);
+              addBotMessage("Processing voice...");
+              setTimeout(() => {
+                addBotMessage("Voice authentication confirmed! PIN confirmed.");
+                setTimeout(() => {
+                  completePayment();
+                }, 1000);
+              }, 2000);
+            } else {
+              // Handle normal voice payment command
+              console.log("Adding user message:", transcript);
+              addUserMessage(transcript);
+              setTimeout(() => {
+                processPaymentCommand(transcript, true); // Pass true to indicate this was a voice command
+              }, 500);
+            }
+          }
+        };
+
+        recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+          console.error("Speech recognition error:", event.error);
+          setIsListening(false);
+          setIsVoiceAuth(false);
+
+          let errorMessage =
+            "Sorry, I couldn't understand that. Please try again.";
+
+          switch (event.error) {
+            case "no-speech":
+              errorMessage = "No speech detected. Please try speaking again.";
+              break;
+            case "audio-capture":
+              errorMessage =
+                "No microphone found. Please check your microphone.";
+              break;
+            case "not-allowed":
+              errorMessage =
+                "Microphone permission denied. Please allow microphone access.";
+              break;
+            case "network":
+              errorMessage = "Network error. Please check your connection.";
+              break;
+          }
+
+          addBotMessage(errorMessage);
+          toast.error(errorMessage);
+        };
+
+        recognition.onend = () => {
+          console.log("Speech recognition ended");
+          setIsListening(false);
+          setIsVoiceAuth(false);
+        };
+
+        recognitionRef.current = recognition;
+      } else {
+        setSpeechSupported(false);
+        console.warn("Speech recognition not supported in this browser");
+      }
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+    };
+  }, [needsVoiceAuth]);
+
+  // Cleanup speech recognition on unmount
+  React.useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
 
   const trpc = useTRPC();
   const { data: result, refetch: refetchPayments } = useQuery(
@@ -139,106 +314,226 @@ export default function PaymentDashboard() {
     })
   );
 
-  const processPaymentCommand = async (command: string) => {
-    const paymentRegex = /pay\s+(\d+)\s+to\s+(\w+)/i;
-    const match = command.match(paymentRegex);
+  // Search users mutation
+  const { mutateAsync: searchUsersAsync } = useMutation(
+    trpc.users.searchUsers.mutationOptions()
+  );
 
-    if (!match) {
-      setTimeout(() => {
-        addBotMessage("I didn't understand that.");
-      }, 800);
-      return;
-    }
+  // Get best payment method mutation
+  const { mutateAsync: getBestPaymentMethodAsync } = useMutation(
+    trpc.smartPayment.getBestPaymentMethod.mutationOptions()
+  );
 
-    const amount = parseInt(match[1] || "0");
-    const recipient = match[2] ? match[2].toLowerCase() : "";
+  const processPaymentCommand = async (
+    command: string,
+    isVoiceParam = false
+  ) => {
+    try {
+      // Step 1: Parse the command with simple client-side NLP
+      addBotMessage("Analyzing your request...");
 
-    if (recipient !== "kavish") {
-      setTimeout(() => {
-        addBotMessage(
-          `Sorry, I couldn't find ${recipient} in your contacts. Try 'kavish' instead.`
-        );
-      }, 800);
-      return;
-    }
+      // Simple client-side parsing
+      const text = command.toLowerCase().trim();
 
-    // Add delay before starting processing
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsProcessingPayment(true);
+      // Extract amount (any number in the text)
+      const amountMatch = text.match(/\b(\d+(?:\.\d{1,2})?)\b/);
+      const amount = amountMatch?.[1] ? parseFloat(amountMatch[1]) : null;
 
-    const steps = [
-      "Finding the list of users",
-      "Finding the recently paid users",
-      "Found Kavish in Recently paid",
-      "Finding the best payment method",
-      "Best payment method found to be UPI",
-      "UPI not found in user's payment method",
-      "Next best payment method is Credit card",
-      "Credit card found 3241",
-      `Paying Kavish ${amount} via credit card 3241`,
-    ];
+      // Extract recipient name
+      let recipient: string | null = null;
 
-    setThinkingSteps(steps.map((step) => ({ text: step, completed: false })));
-    setCurrentThinkingStep(0);
+      // Pattern: "pay 500 to kavish" or "send 100 to john"
+      const toPattern =
+        /(?:pay|send|transfer)\s+(?:\d+(?:\.\d{1,2})?)\s+to\s+([a-zA-Z]+)/;
+      const toMatch = text.match(toPattern);
+      if (toMatch?.[1]) {
+        recipient = toMatch[1];
+      } else {
+        // Pattern: "pay kavish 500" or "send john 100"
+        const nameAmountPattern =
+          /(?:pay|send|transfer)\s+([a-zA-Z]+)\s+(\d+(?:\.\d{1,2})?)/;
+        const nameAmountMatch = text.match(nameAmountPattern);
+        if (nameAmountMatch?.[1]) {
+          recipient = nameAmountMatch[1];
+        }
+      }
 
-    // Simulate thinking process with individual step animations
-    // Define custom timeouts for each step (in milliseconds)
-    const stepTimeouts = [
-      1800, // "Finding the list of users"
-      1700, // "Finding the recently paid users"
-      1600, // "Found Kavish in Recently paid"
-      2200, // "Finding the best payment method"
-      1900, // "Best payment method found to be UPI"
-      1700, // "UPI not found in user's payment method"
-      2000, // "Next best payment method is Credit card"
-      1800, // "Credit card found 3241"
-      2500, // "Paying Kavish {amount} via credit card 3241"
-    ];
+      // Check if it's a payment command
+      const isPaymentCommand = /\b(pay|send|transfer)\b/.test(text);
 
-    for (let i = 0; i < steps.length; i++) {
-      setCurrentThinkingStep(i);
-      await new Promise((resolve) =>
-        setTimeout(resolve, stepTimeouts[i] || 1000)
-      );
+      if (!isPaymentCommand || !amount || !recipient) {
+        setTimeout(() => {
+          addBotMessage(
+            "I didn't understand that payment request. Please try something like 'pay 100 to kavish' or 'send 50 to john'."
+          );
+        }, 800);
+        return;
+      }
+
+      // Step 2: Search for users (using hardcoded known users for demo)
+      setIsProcessingPayment(true);
+      const steps = [
+        "Parsing your payment request",
+        "Searching for users matching your query",
+        "Finding recently paid contacts",
+        "Locating the recipient",
+        "Finding the best payment method",
+        "Preparing payment details",
+      ];
+
+      setThinkingSteps(steps.map((step) => ({ text: step, completed: false })));
+      setCurrentThinkingStep(0);
+
+      // Step timeouts for realistic processing feel
+      const stepTimeouts = [1200, 1500, 1300, 1600, 1800, 1400];
+
+      // Execute step 1: Parse command (already done)
+      setCurrentThinkingStep(0);
+      await new Promise((resolve) => setTimeout(resolve, stepTimeouts[0]));
       setThinkingSteps((prev) =>
         prev.map((step, index) =>
-          index === i ? { ...step, completed: true } : step
+          index === 0 ? { ...step, completed: true } : step
         )
       );
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
 
-    // Create payment details
-    const paymentDetails: PaymentDetails = {
-      recipient: "Kavish",
-      email: "kavishdham@gmail.com",
-      amount: amount,
-      paymentMethod: "Credit Card",
-      paymentMethodLast4: "3241",
-      status: "processing",
-    };
+      // Execute step 2: Search users (using tRPC mutation)
+      setCurrentThinkingStep(1);
+      await new Promise((resolve) => setTimeout(resolve, stepTimeouts[1]));
 
-    setCurrentPayment(paymentDetails);
-    setIsProcessingPayment(false);
+      // Search for users using the backend API
+      const searchResult = await searchUsersAsync({
+        query: recipient,
+        limit: 5,
+      });
 
-    // Add delay before showing payment details
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    addBotMessage("", paymentDetails);
+      const foundUser = searchResult.find(
+        (user) =>
+          user.name?.toLowerCase().includes(recipient!.toLowerCase()) ||
+          user.email?.toLowerCase().includes(recipient!.toLowerCase())
+      );
 
-    console.log("VOICE PAYMENT", isVoicePayment);
-    // Handle different flows based on how payment was initiated
-    if (isVoicePayment) {
-      // Voice payment - ask for voice PIN authentication
+      setThinkingSteps((prev) =>
+        prev.map((step, index) =>
+          index === 1 ? { ...step, completed: true } : step
+        )
+      );
+
+      // Execute step 3: Check recent contacts
+      setCurrentThinkingStep(2);
+      await new Promise((resolve) => setTimeout(resolve, stepTimeouts[2]));
+      setThinkingSteps((prev) =>
+        prev.map((step, index) =>
+          index === 2 ? { ...step, completed: true } : step
+        )
+      );
+
+      // Execute step 4: Find recipient
+      setCurrentThinkingStep(3);
+      await new Promise((resolve) => setTimeout(resolve, stepTimeouts[3]));
+
+      if (!foundUser) {
+        setIsProcessingPayment(false);
+        setTimeout(() => {
+          addBotMessage(
+            `Sorry, I couldn't find "${recipient}" in your contacts. ${
+              searchResult.length > 0
+                ? `Did you mean one of these: ${searchResult.map((u) => u.name).join(", ")}?`
+                : "Please check the spelling or try adding them as a contact first."
+            }`
+          );
+        }, 800);
+        return;
+      }
+
+      setThinkingSteps((prev) =>
+        prev.map((step, index) =>
+          index === 3 ? { ...step, completed: true } : step
+        )
+      );
+
+      // Execute step 5: Get best payment method using smart routing
+      setCurrentThinkingStep(4);
+      await new Promise((resolve) => setTimeout(resolve, stepTimeouts[4]));
+
+      let bestPaymentMethod;
+      try {
+        const smartPaymentResult = await getBestPaymentMethodAsync({
+          amount: amount,
+          recipientId: foundUser.id,
+        });
+        bestPaymentMethod = smartPaymentResult.bestPaymentMethod;
+      } catch (error) {
+        console.error("Error getting smart payment method:", error);
+        // Fallback to default payment method
+        bestPaymentMethod =
+          paymentMethods?.find((pm) => pm.isDefault) || paymentMethods?.[0];
+      }
+
+      setThinkingSteps((prev) =>
+        prev.map((step, index) =>
+          index === 4 ? { ...step, completed: true } : step
+        )
+      );
+
+      // Execute step 6: Prepare payment
+      setCurrentThinkingStep(5);
+      await new Promise((resolve) => setTimeout(resolve, stepTimeouts[5]));
+      setThinkingSteps((prev) =>
+        prev.map((step, index) =>
+          index === 5 ? { ...step, completed: true } : step
+        )
+      );
+
+      // Create payment details with smart routing data
+      const paymentDetails: PaymentDetails = {
+        recipient: foundUser.name,
+        email: foundUser.email,
+        amount: amount,
+        paymentMethod:
+          bestPaymentMethod?.type === "upi_id"
+            ? "UPI"
+            : bestPaymentMethod?.type === "credit_card"
+              ? "Credit Card"
+              : bestPaymentMethod?.type === "debit_card"
+                ? "Debit Card"
+                : "Bank Transfer",
+        paymentMethodLast4: getDetails(
+          bestPaymentMethod?.type!,
+          bestPaymentMethod?.details
+        ),
+        status: "processing",
+      };
+
+      setCurrentPayment(paymentDetails);
+      setIsProcessingPayment(false);
+
+      // Add delay before showing payment details
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      addBotMessage("", paymentDetails);
+
+      console.log("VOICE PAYMENT", isVoiceParam);
+      // Handle different flows based on how payment was initiated
+      if (isVoiceParam) {
+        // Voice payment - ask for voice PIN authentication
+        setTimeout(() => {
+          setNeedsVoiceAuth(true);
+          addBotMessage("Please say the PIN by voice for voice authentication");
+        }, 1000);
+      } else {
+        // Text payment - show PIN input
+        setTimeout(() => {
+          setShowPinInput(true);
+          addBotMessage("Please enter your 4-digit PIN to confirm the payment");
+        }, 1000);
+      }
+    } catch (error: any) {
+      setIsProcessingPayment(false);
+      console.error("Payment processing error:", error);
       setTimeout(() => {
-        setNeedsVoiceAuth(true);
-        addBotMessage("Please say the PIN by voice for voice authentication");
-      }, 1000);
-    } else {
-      // Text payment - show PIN input
-      setTimeout(() => {
-        setShowPinInput(true);
-        addBotMessage("Please enter your 4-digit PIN to confirm the payment");
-      }, 1000);
+        addBotMessage(
+          "Sorry, there was an error processing your request. Please try again or check your payment methods."
+        );
+      }, 800);
     }
   };
 
@@ -275,10 +570,9 @@ export default function PaymentDashboard() {
       addUserMessage(chatMessage);
       const command = chatMessage.trim();
       setChatMessage("");
-      setIsVoicePayment(false);
 
       if (!showPinInput && !needsVoiceAuth) {
-        await processPaymentCommand(command);
+        await processPaymentCommand(command, false); // Explicitly set to false for text input
       }
     }
   };
@@ -309,16 +603,39 @@ export default function PaymentDashboard() {
     }
   };
 
+  const clearAllStatesExceptHistory = () => {
+    setChatMessage("");
+    setIsListening(false);
+    setIsProcessingPayment(false);
+    setThinkingSteps([]);
+    setCurrentThinkingStep(0);
+    setCurrentPayment(null);
+    setPinValue("");
+    setShowPinInput(false);
+    setIsVoiceAuth(false);
+    setNeedsVoiceAuth(false);
+
+    // Stop any ongoing speech recognition
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+  };
+
   const completePayment = async () => {
     addBotMessage("Payment processing...");
 
     try {
-      // Find the user first (similar to pay-user page)
-      const user = await findUserAsync({ email: "kavishdham@gmail.com" });
+      if (!currentPayment) {
+        throw new Error("No payment details found");
+      }
+
+      // Find the user by email from the current payment
+      const user = await findUserAsync({ email: currentPayment.email });
 
       if (!user) {
         setTimeout(() => {
           addBotMessage("Sorry, couldn't find the user. Please try again.");
+          clearAllStatesExceptHistory();
         }, 1000);
         return;
       }
@@ -327,16 +644,17 @@ export default function PaymentDashboard() {
       const defaultPaymentMethod =
         paymentMethods?.find((pm) => pm.isDefault) || paymentMethods?.[0];
 
-      if (!defaultPaymentMethod || !currentPayment) {
+      if (!defaultPaymentMethod) {
         setTimeout(() => {
           addBotMessage(
             "Sorry, no payment method found. Please add a payment method first."
           );
+          clearAllStatesExceptHistory();
         }, 1000);
         return;
       }
 
-      // Create the payment (similar to pay-user page)
+      // Create the payment
       await createPaymentAsync({
         toUserId: user.id,
         amount: currentPayment.amount,
@@ -353,6 +671,10 @@ export default function PaymentDashboard() {
           toast.success(
             `Payment of $${currentPayment.amount.toFixed(2)} sent to ${currentPayment.recipient}!`
           );
+          // Clear states after successful payment, keeping the completion message
+          setTimeout(() => {
+            clearAllStatesExceptHistory();
+          }, 3000);
         }
       }, 2000);
     } catch (error: any) {
@@ -360,44 +682,51 @@ export default function PaymentDashboard() {
         addBotMessage(
           "Sorry, there was an error processing your payment. Please try again."
         );
+        clearAllStatesExceptHistory();
       }, 1000);
       toast.error(error.message || "Failed to process payment");
     }
   };
 
   const handleVoiceToggle = () => {
-    setIsVoicePayment(true);
+    if (!speechSupported) {
+      addBotMessage(
+        "Sorry, speech recognition is not supported in this browser. Please try using Chrome, Safari, or Edge."
+      );
+      toast.error("Speech recognition not supported");
+      return;
+    }
+
+    if (!recognitionRef.current) {
+      addBotMessage(
+        "Speech recognition is not available. Please refresh the page and try again."
+      );
+      toast.error("Speech recognition not available");
+      return;
+    }
+
     if (needsVoiceAuth) {
       // Handle voice authentication for payment confirmation
       if (isVoiceAuth) {
-        // Stop voice auth - complete the payment
+        // Stop voice auth
+        recognitionRef.current.stop();
         setIsVoiceAuth(false);
-        setNeedsVoiceAuth(false);
-        addBotMessage("Processing voice...");
-        setTimeout(() => {
-          addBotMessage("Voice authentication confirmed! PIN confirmed.");
-          setTimeout(() => {
-            completePayment();
-          }, 1000);
-        }, 2000);
       } else {
         // Start voice auth
         setIsVoiceAuth(true);
-        addBotMessage("Voice authentication in progress...");
-        // Simulate voice auth completion after 3 seconds
-        setTimeout(() => {
-          if (isVoiceAuth) {
-            setIsVoiceAuth(false);
-            setNeedsVoiceAuth(false);
-            addBotMessage("Processing voice...");
-            setTimeout(() => {
-              addBotMessage("Voice authentication confirmed! PIN confirmed.");
-              setTimeout(() => {
-                completePayment();
-              }, 1000);
-            }, 2000);
-          }
-        }, 3000);
+        addBotMessage(
+          "Voice authentication in progress... Please speak clearly."
+        );
+        try {
+          recognitionRef.current.start();
+        } catch (error) {
+          console.error("Failed to start voice recognition:", error);
+          setIsVoiceAuth(false);
+          addBotMessage(
+            "Failed to start voice authentication. Please try again."
+          );
+          toast.error("Failed to start voice authentication");
+        }
       }
       return;
     }
@@ -405,15 +734,23 @@ export default function PaymentDashboard() {
     // Handle normal voice input for payment commands
     if (isListening) {
       // Stop recording
+      recognitionRef.current.stop();
       setIsListening(false);
-      // Simulate voice command processing
-      setTimeout(() => {
-        addUserMessage("pay 500 to kavish");
-        processPaymentCommand("pay 500 to kavish");
-      }, 500);
+      addBotMessage("Stopped listening.");
     } else {
       // Start recording
       setIsListening(true);
+      addBotMessage(
+        "Listening for payment command... Try saying something like 'pay 500 to kavish'"
+      );
+      try {
+        recognitionRef.current.start();
+      } catch (error) {
+        console.error("Failed to start voice recognition:", error);
+        setIsListening(false);
+        addBotMessage("Failed to start voice recognition. Please try again.");
+        toast.error("Failed to start voice recognition");
+      }
     }
   };
 
@@ -663,7 +1000,9 @@ export default function PaymentDashboard() {
                       ? "Enter your PIN above"
                       : isListening
                         ? "Listening... say your command"
-                        : "Type your message or use voice..."
+                        : speechSupported
+                          ? "Type your message or use voice..."
+                          : "Type your message (voice not supported in this browser)..."
                 }
                 value={chatMessage}
                 onChange={(e) => setChatMessage(e.target.value)}
@@ -680,10 +1019,23 @@ export default function PaymentDashboard() {
                   ? "bg-red-500 hover:bg-red-600 text-white animate-pulse"
                   : ""
               }`}
-              disabled={showPinInput && !needsVoiceAuth}
+              disabled={(showPinInput && !needsVoiceAuth) || !speechSupported}
+              title={
+                !speechSupported
+                  ? "Speech recognition not supported in this browser"
+                  : isListening
+                    ? "Stop listening"
+                    : isVoiceAuth
+                      ? "Stop voice authentication"
+                      : needsVoiceAuth
+                        ? "Start voice authentication"
+                        : "Start voice input"
+              }
             >
               {isListening || isVoiceAuth ? (
                 <Square className="h-5 w-5" />
+              ) : !speechSupported ? (
+                <MicOff className="h-5 w-5" />
               ) : (
                 <Mic className="h-5 w-5" />
               )}

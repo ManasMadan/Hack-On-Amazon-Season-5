@@ -58,7 +58,7 @@ export const usersRouter = router({
         limit: z.number().min(1).max(20).default(10),
       })
     )
-    .query(async ({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { query, limit } = input;
       const currentUserId = ctx.session.user.id;
 

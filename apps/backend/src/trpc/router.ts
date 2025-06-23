@@ -8,6 +8,7 @@ import { Prisma } from "@repo/database/types";
 import { smartPaymentRouter } from "@/routes/smart_payments";
 import { voiceAuthRouter } from "@/routes/voice_auth";
 import { contractsRouter } from "@/routes/contracts";
+import { nlpRouter } from "@/routes/nlp";
 
 export const appRouter = router({
   auth: authRouter,
@@ -18,6 +19,7 @@ export const appRouter = router({
   smartPayment: smartPaymentRouter,
   voiceAuth: voiceAuthRouter,
   contracts: contractsRouter,
+  nlp: nlpRouter,
 });
 
 export type AppRouter = typeof appRouter;
